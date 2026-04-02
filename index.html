@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>智疗云生态 - 精准医疗全量数据底座</title>
+
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- FontAwesome Icons (jsDelivr CDN) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          /* ==== 原版主题色 ==== */
+          brand: { 900: '#0F172A', 800: '#1E293B', 400: '#94A3B8', 100: '#F1F5F9', 50: '#F8FAFC' },
+          accent: { blue: '#2563EB', cyan: '#06B6D4', sky: '#0EA5E9', indigo: '#4338CA' },
+          /* ==== 新增主题色 ==== */
+          patient: { 600: '#10B981', 50: '#ECFDF5', 100: '#D1FAE5', 800: '#065F46' }, // 患者端绿
+          pharma: { 600: '#8B5CF6', 50: '#F5F3FF', 100: '#EDE9FE', 900: '#4C1D95' } // 药企端紫
+        },
+        fontFamily: { 
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  /* ================= 原版样式 (一字未删) ================= */
+  .glass-card {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    border-radius: 2.5rem;
+    transition: all 0.5s ease;
+    position: relative;
+  }
+  .glass-card:hover {
+    box-shadow: 0 25px 60px rgba(37, 99, 235, 0.12);
+  }
+  .glass-card::before {
+    content: ""; position: absolute; top: 1.5rem; left: 1.5rem; width: 1.25rem; height: 1.25rem;
+    border-top: 2px solid rgba(37, 99, 235, 0.3); border-left: 2px solid rgba(37, 99, 235, 0.3);
+  }
+  .glass-card::after {
+    content: ""; position: absolute; bottom: 1.5rem; right: 1.5rem; width: 1rem; height: 1rem;
+    border-bottom: 2px solid rgba(37, 99, 235, 0.3); border-right: 2px solid rgba(37, 99, 235, 0.3);
+  }
+
+  .text-gradient-blue {
+    background-image: linear-gradient(to right, #2563EB, #06B6D4, #2563EB);
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: gradient 4s linear infinite;
+  }
+
+  .heatmap-cell {
+    width: 100%; height: 2rem; border-radius: 0.125rem; transition: all 0.3s ease;
+    cursor: help; position: relative;
+  }
+  .heatmap-cell:hover {
+    transform: scale(1.15); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 10;
+  }
+  .heatmap-tooltip {
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    margin-bottom: 0.5rem; width: max-content; padding: 0.5rem 0.75rem;
+    background-color: #0F172A; color: white; font-size: 10px; font-weight: bold;
+    border-radius: 0.5rem; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+    z-index: 50; pointer-events: none;
+  }
+  .heatmap-cell:hover .heatmap-tooltip { opacity: 1; visibility: visible; }
+
+  .page-container { display: none; animation: subtleFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .page-container.active { display: block; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  
+  @keyframes subtleFadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bouncyFloat {
+    0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+    50% { transform: translateY(-35px) scale(1.2) rotate(10deg); }
+  }
+  @keyframes gridMove {
+    from { background-position: 0 0; }
+    to { background-position: 60px 60px; }
+  }
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    background-color: #F8FAFC;
+    background-image: 
+      linear-gradient(rgba(37, 99, 235, 0.1) 1.5px, transparent 1.5px),
+      linear-gradient(90deg, rgba(37, 99, 235, 0.1) 1.5px, transparent 1.5px),
+      radial-gradient(rgba(37, 99, 235, 0.05) 2px, transparent 2px);
+    background-size: 60px 60px, 60px 60px, 30px 30px;
+    background-attachment: fixed;
+    animation: gridMove 15s linear infinite;
+    color: #0F172A;
+    overflow-x: hidden;
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; opacity: 0.1; pointer-events: none;
+    background-image: url('https://images.unsplash.com/photo-1579154341098-e4e158cc7f55?auto=format&fit=crop&q=80&w=2000');
+    background-size: cover; background-position: center;
+  }
+
+  /* ================= 新增：多端调度架构样式 ================= */
+  .terminal-container { display: none; opacity: 0; transition: opacity 0.5s ease; }
+  .terminal-container.active { display: block; opacity: 1; animation: subtleFadeUp 0.6s forwards; }
+
+  .role-card { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); border: 2px solid transparent; }
+  .role-card:hover { transform: translateY(-10px); }
+  .role-patient:hover { border-color: #10B981; box-shadow: 0 25px 60px rgba(16, 185, 129, 0.15); }
+  .role-hospital:hover { border-color: #2563EB; box-shadow: 0 25px 60px rgba(37, 99, 235, 0.15); }
+  .role-pharma:hover { border-color: #8B5CF6; box-shadow: 0 25px 60px rgba(139, 92, 246, 0.15); }
+
+  .chat-bubble { animation: fadeInBubble 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes fadeInBubble { from { opacity: 0; transform: translateY(15px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 10px; }
+
+  @media (max-width: 640px) {
+    .terminal-container [class*="text-[8px]"] { font-size: 9px !important; }
+    .terminal-container [class*="text-[9px]"] { font-size: 10px !important; }
+    .terminal-container [class*="text-[10px]"] { font-size: 11px !important; }
+    .terminal-container .text-xs { font-size: 13px !important; line-height: 1.45 !important; }
+  }
+</style>
+</head>
+<body class="antialiased selection:bg-accent-blue/10">
+
+<!-- 启动页 (Landing Page) -->
+<div id="landing-page" class="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center transition-all duration-1000 ease-in-out">
+  <div class="absolute inset-0 opacity-[0.05] bg-[url('https://images.unsplash.com/photo-1532187875605-2fe35f743ee2?auto=format&fit=crop&q=80&w=2000')] bg-cover"></div>
+  <div class="absolute w-[24rem] h-[24rem] sm:w-[45rem] sm:h-[45rem] bg-blue-600/5 rounded-full blur-[120px] animate-pulse"></div>
+  
+  <div class="relative z-[10000] text-center px-8 w-full flex flex-col items-center">
+    <div class="w-28 h-28 lg:w-36 lg:h-36 mb-12 rounded-full bg-white shadow-[0_25px_60px_-15px_rgba(37,99,235,0.3)] flex items-center justify-center border border-blue-500/10 relative" style="animation: bouncyFloat 2s ease-in-out infinite;">
+      <div class="absolute inset-0 rounded-full border border-blue-500/20 scale-125 animate-ping opacity-20"></div>
+      <i class="fas fa-dna text-5xl lg:text-6xl text-gradient-blue"></i>
+    </div>
+    <h1 class="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight text-brand-900 mb-4">智疗云生态</h1>
+    <p class="text-[10px] lg:text-xs tracking-[0.35em] sm:tracking-[0.6em] text-blue-600 mb-10 sm:mb-16 uppercase font-bold opacity-60 font-mono">Precision Genomic Multi-Terminal OS</p>
+    <p class="text-lg sm:text-xl lg:text-2xl font-semibold text-brand-800 mb-10 sm:mb-16 tracking-[0.2em] sm:tracking-widest leading-relaxed">基于百万级真实世界证据 (RWD)<br><span class="text-gradient-blue font-black">赋能极客级临床与研发决策</span></p>
+    <button type="button" onclick="showRoleModal()" class="cursor-pointer pointer-events-auto relative z-[10001] w-full max-w-xs sm:w-auto bg-brand-900 text-white text-sm font-bold tracking-[0.2em] sm:tracking-[0.3em] px-8 sm:px-16 py-5 sm:py-6 rounded-full shadow-2xl hover:shadow-blue-500/40 transition-all duration-500 active:scale-95 uppercase">
+      连接进入系统生态 <i class="fas fa-arrow-right ml-4"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ================= 新增：多端角色身份选择网关 ================= -->
+<div id="role-modal" class="fixed inset-0 z-[10005] bg-white/90 backdrop-blur-2xl hidden flex-col items-center justify-start md:justify-center p-3 sm:p-6 py-3 md:py-6 overflow-y-auto transition-all duration-700 opacity-0">
+    <h2 class="text-[22px] sm:text-3xl lg:text-4xl font-black text-brand-900 mb-3 sm:mb-12 tracking-tighter uppercase shrink-0 leading-tight">请验证您的系统通行授权</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-8 w-full max-w-6xl shrink-0">
+        <!-- 患者端入口 -->
+        <div onclick="enterTerminal('patient')" class="glass-card role-card role-patient p-3 sm:p-10 cursor-pointer flex flex-col items-center text-center">
+            <div class="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-patient-50 text-patient-600 flex items-center justify-center text-xl sm:text-4xl mb-2.5 sm:mb-6"><i class="fas fa-user-injured"></i></div>
+            <h3 class="text-[26px] sm:text-2xl font-black text-brand-900 mb-1">个人与患者</h3>
+            <p class="text-[10px] sm:text-xs text-brand-400 font-bold mb-3 sm:mb-8 leading-snug sm:h-8">健康档案云端合规存档<br>大模型智能问诊与基因报告解读</p>
+            <span class="px-3 py-1 sm:px-4 sm:py-2 bg-patient-50 text-patient-600 text-[8px] sm:text-[10px] font-black uppercase tracking-wide sm:tracking-widest rounded-lg">Patient Portal (端到端加密)</span>
+        </div>
+        <!-- 医生端入口 (原版核心系统) -->
+        <div onclick="enterTerminal('hospital')" class="glass-card role-card role-hospital p-3 sm:p-10 cursor-pointer flex flex-col items-center text-center relative overflow-hidden">
+            <div class="absolute top-0 right-0 bg-blue-600 text-white text-[8px] sm:text-[9px] font-black px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-bl-2xl shadow-lg">PRO</div>
+            <div class="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl sm:text-4xl mb-2.5 sm:mb-6"><i class="fas fa-user-md"></i></div>
+            <h3 class="text-[26px] sm:text-2xl font-black text-brand-900 mb-1">医生与专家组</h3>
+            <p class="text-[10px] sm:text-xs text-brand-400 font-bold mb-3 sm:mb-8 leading-snug sm:h-8">核心靶向与免疫图谱演算<br>智能临床决策支持系统 (CDSS)</p>
+            <span class="px-3 py-1 sm:px-4 sm:py-2 bg-blue-50 text-blue-600 text-[8px] sm:text-[10px] font-black uppercase tracking-wide sm:tracking-widest rounded-lg">Hospital Terminal (专业基建)</span>
+        </div>
+        <!-- 药企端入口 -->
+        <div onclick="enterTerminal('pharma')" class="glass-card role-card role-pharma p-3 sm:p-10 cursor-pointer flex flex-col items-center text-center">
+            <div class="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-pharma-50 text-pharma-600 flex items-center justify-center text-xl sm:text-4xl mb-2.5 sm:mb-6"><i class="fas fa-microscope"></i></div>
+            <h3 class="text-[26px] sm:text-2xl font-black text-brand-900 mb-1">制药与研发机构</h3>
+            <p class="text-[10px] sm:text-xs text-brand-400 font-bold mb-3 sm:mb-8 leading-snug sm:h-8">宏观真实世界数据大盘洞察<br>临床试验(CRO)受试者智能匹配引擎</p>
+            <span class="px-3 py-1 sm:px-4 sm:py-2 bg-pharma-50 text-pharma-600 text-[8px] sm:text-[10px] font-black uppercase tracking-wide sm:tracking-widest rounded-lg">Pharma R&D (全球节点)</span>
+        </div>
+    </div>
+    <button onclick="hideRoleModal()" class="mt-3 sm:mt-16 shrink-0 text-xs text-brand-400 font-bold uppercase tracking-widest hover:text-brand-900 transition-colors"><i class="fas fa-arrow-left mr-2"></i>取消身份验证并返回</button>
+</div>
+
+
+<!-- ================= 核心代码区块 1：原版完整医生端 (一字不删) ================= -->
+<div id="terminal-hospital" class="terminal-container w-full max-w-6xl mx-auto pt-24 pb-28 lg:pb-16 px-4 relative">
+  <!-- 导航栏 -->
+  <header class="fixed top-4 left-4 right-4 lg:left-1/2 lg:-translate-x-1/2 lg:w-[calc(100%-4rem)] lg:max-w-6xl z-[500] bg-white/90 backdrop-blur-2xl border border-white rounded-full px-4 sm:px-6 lg:px-10 py-4 flex justify-between items-center shadow-lg">
+    <div class="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0" onclick="showRoleModal()" title="点击切换终端">
+      <div class="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-[0_0_12px_#2563EB] animate-pulse"></div>
+      <span class="text-base sm:text-xl font-black tracking-tighter text-brand-900 leading-none whitespace-nowrap">ZHILIAO<span class="text-blue-600">.AI</span></span>
+      <!-- 标识标签 -->
+      <span class="px-2 py-0.5 bg-brand-900 text-white text-[8px] rounded uppercase font-bold tracking-widest ml-2 hidden lg:inline-block">医生专家端</span>
+    </div>
+    
+    <nav class="hidden lg:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+      <div class="nav-item cursor-pointer text-brand-900 font-bold tracking-widest text-[11px] uppercase transition-all hover:text-blue-600" data-target="home" onclick="switchTab('home')"><i class="fas fa-th-large mr-2 text-[10px]"></i>首页概览</div>
+      <div class="nav-item cursor-pointer text-brand-400 font-bold tracking-widest text-[11px] uppercase transition-all hover:text-blue-600" data-target="hub" onclick="switchTab('hub')"><i class="fas fa-brain mr-2 text-[10px]"></i>决策引擎</div>
+      <div class="nav-item cursor-pointer text-brand-400 font-bold tracking-widest text-[11px] uppercase transition-all hover:text-blue-600" data-target="db" onclick="switchTab('db')"><i class="fas fa-chart-pie mr-2 text-[10px]"></i>态势感知</div>
+      <div class="nav-item cursor-pointer text-brand-400 font-bold tracking-widest text-[11px] uppercase transition-all hover:text-blue-600" data-target="mine" onclick="switchTab('mine')"><i class="fas fa-folder mr-2 text-[10px]"></i>档案中心</div>
+    </nav>
+
+    <div class="flex gap-3 sm:gap-5 items-center text-brand-400 shrink-0">
+      <div class="relative cursor-pointer hover:text-brand-900 transition-colors" onclick="openNotify()">
+        <i class="far fa-bell text-lg"></i>
+        <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+      </div>
+      <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform" onclick="openProfile()">
+        <i class="fas fa-user-md text-sm"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- 原版 首页 (Home) -->
+  <main id="home-page" class="page-container active w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 mt-8 lg:mt-12">
+      <div class="lg:col-span-6 flex flex-col justify-center">
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            <span class="px-3 py-1 bg-blue-100 text-blue-600 text-[10px] font-bold rounded-full">NCCN 2024 V3 已同步</span>
+            <span class="px-3 py-1 bg-green-100 text-green-600 text-[10px] font-bold rounded-full">CSCO 实体瘤指南对齐</span>
+        </div>
+        <h2 class="text-4xl lg:text-7xl font-black text-brand-900 leading-[1.1] mb-8 tracking-tight">构筑人类<br><span class="text-gradient-blue">生命防线。</span></h2>
+        <p class="text-sm lg:text-lg text-brand-400 leading-relaxed font-medium mb-10 max-w-md">集成超过 2,450,000 例实体瘤（NSCLC, CRC等）真实世界组学数据，采用知识图谱推理，提供分子级精准用药与耐药预警。</p>
+        
+        <div class="flex flex-wrap gap-4">
+          <button onclick="switchTab('hub')" class="w-full sm:w-auto bg-brand-900 text-white text-[11px] font-black tracking-widest px-8 py-4 rounded-2xl shadow-xl hover:-translate-y-1 transition-all uppercase">启动核心演算</button>
+          <button onclick="openWhitepaper()" class="w-full sm:w-auto bg-white text-brand-900 border border-brand-200 text-[11px] font-black tracking-widest px-8 py-4 rounded-2xl hover:bg-brand-50 transition-all uppercase">查看技术白皮书</button>
+          <button onclick="openPolicy()" class="w-full sm:w-auto bg-white text-brand-900 border border-brand-200 text-[11px] font-black tracking-widest px-8 py-4 rounded-2xl hover:bg-brand-50 transition-all uppercase">监管与循证体系</button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="glass-card p-8 group">
+          <div class="text-4xl font-black text-brand-900 mb-1 tracking-tighter">99.2<span class="text-base text-brand-400 ml-1">%</span></div>
+          <div class="text-[10px] text-brand-400 font-bold tracking-widest uppercase">MDT 专家组决策符合率</div>
+          <div class="mt-4 w-full bg-brand-50 h-1.5 rounded-full overflow-hidden"><div class="bg-blue-600 h-full" style="width: 99.2%"></div></div>
+        </div>
+        <div class="glass-card p-8 group">
+          <div class="text-4xl font-black text-brand-900 mb-1 tracking-tighter">84<span class="text-base text-brand-400 ml-1">K+</span></div>
+          <div class="text-[10px] text-brand-400 font-bold tracking-widest uppercase">收录临床试验 (ClinicalTrials.gov)</div>
+          <div class="mt-4 flex gap-1"><span class="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span><span class="text-[8px] font-mono font-bold text-blue-600">实时增量更新中</span></div>
+        </div>
+        <div class="glass-card col-span-1 sm:col-span-2 p-8 relative overflow-hidden">
+          <h3 class="text-xs font-black text-brand-900 mb-6 tracking-widest uppercase flex items-center gap-2"><i class="fas fa-network-wired text-blue-600"></i> 生物信息数据管道状态</h3>
+          <div class="space-y-4">
+             <div class="flex justify-between items-center text-[10px] font-bold"><span class="text-brand-400">WES/WGS 变异库索引 (hg38)</span><span class="text-green-500 font-mono">ONLINE / 1.4PB</span></div>
+             <div class="flex justify-between items-center text-[10px] font-bold"><span class="text-brand-400">OncoKB 知识图谱对齐节点</span><span class="text-blue-600 font-mono">LATENCY: 4ms</span></div>
+             <div class="flex justify-between items-center text-[10px] font-bold"><span class="text-brand-400">FDA / NMPA 获批药物数据库</span><span class="text-cyan-500 font-mono">SYNCED 2 HOURS AGO</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 原版 AI 决策引擎 (AI Hub) -->
+  <main id="hub-page" class="page-container w-full">
+    <div class="mb-12 mt-6 lg:text-center px-2">
+      <h2 class="text-4xl lg:text-5xl font-black text-brand-900 mb-3 tracking-tighter uppercase">AI Decision Hub</h2>
+      <p class="text-[10px] text-brand-400 font-bold tracking-[0.5em] uppercase opacity-70">基于多模态组学与真实世界证据的推理</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div class="lg:col-span-5 glass-card p-10 lg:p-12">
+        <h3 class="text-xl font-black text-brand-900 mb-8 border-b border-brand-50 pb-6 flex justify-between items-center uppercase">多维矩阵输入 <i class="fas fa-microscope text-brand-100"></i></h3>
+        <div class="space-y-6">
+          <div>
+            <label class="block text-[10px] font-bold text-brand-400 mb-3 tracking-widest uppercase">癌症种类 / 组织来源</label>
+            <select id="cancer-type" class="w-full bg-brand-50 border-2 border-brand-100 rounded-xl py-4 px-5 text-xs font-bold text-brand-900 focus:border-blue-600 outline-none transition-all">
+                <option value="nsclc">非小细胞肺癌 (NSCLC)</option>
+                <option value="crc">结直肠癌 (CRC)</option>
+                <option value="breast">乳腺癌 (Breast Cancer)</option>
+                <option value="melanoma">黑色素瘤 (Melanoma)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-brand-400 mb-3 tracking-widest uppercase">核心变异靶点 / Biomarker (支持模糊输入)</label>
+            <div class="relative">
+                <i class="fas fa-dna absolute left-4 top-1/2 -translate-y-1/2 text-brand-200"></i>
+                <input type="text" id="mutation-input" placeholder="例如：EGFR T790M, KRAS G12C, ALK融合" class="w-full bg-brand-50 border-2 border-brand-100 rounded-xl py-4 pl-12 pr-5 text-brand-900 font-bold focus:outline-none focus:border-blue-600 transition-all">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+             <div>
+                <label class="block text-[10px] font-bold text-brand-400 mb-2 tracking-widest uppercase">治疗阶段</label>
+                <select id="treatment-stage" class="w-full bg-brand-50 border border-brand-100 rounded-xl py-3 px-4 text-[11px] font-bold text-brand-900">
+                    <option>初治 (First-line)</option>
+                    <option>一/二代靶向药耐药后进展</option>
+                    <option>化疗/免疫后复发</option>
+                </select>
+             </div>
+             <div>
+                <label class="block text-[10px] font-bold text-brand-400 mb-2 tracking-widest uppercase">样本来源</label>
+                <select class="w-full bg-brand-50 border border-brand-100 rounded-xl py-3 px-4 text-[11px] font-bold text-brand-900">
+                    <option>组织活检 (Tissue)</option>
+                    <option>液体活检 (ctDNA - 血浆)</option>
+                </select>
+             </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-brand-400 mb-3 tracking-widest uppercase">伴随病理/共突变/其他追问</label>
+            <textarea id="ai-query" placeholder="例如：患者基线伴有脑转移，且检测到TP53共突变，是否影响PFS？" class="w-full bg-brand-50 border-2 border-brand-100 rounded-xl py-4 px-5 text-xs text-brand-900 font-medium focus:outline-none focus:border-blue-600 transition-all h-24"></textarea>
+          </div>
+          <button onclick="startAnalysis()" class="w-full py-5 bg-brand-900 text-white rounded-xl font-black text-[11px] tracking-[0.4em] shadow-xl hover:shadow-blue-500/30 hover:bg-blue-600 active:scale-95 transition-all uppercase">执行知识图谱研判</button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 space-y-6">
+        <h3 class="text-xs font-black text-brand-900 tracking-widest uppercase mb-4 flex items-center gap-2"><i class="fas fa-prescription-bottle-medical text-blue-600"></i> 核心靶向与免疫策略谱系预展示</h3>
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="glass-card p-8 group hover:bg-brand-900 transition-all cursor-pointer flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-6">
+                    <span class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-mono font-black group-hover:bg-white transition-colors">1A</span>
+                    <span class="text-[10px] px-2 py-1 bg-green-100 text-green-700 font-bold rounded group-hover:bg-green-600 group-hover:text-white transition-colors">NMPA / FDA 双批</span>
+                </div>
+                <h4 class="text-2xl font-black text-brand-900 mb-1 group-hover:text-white transition-colors">奥希替尼</h4>
+                <p class="text-[11px] font-bold text-brand-400 group-hover:text-white/60 mb-4">第三代 EGFR-TKI 抑制剂</p>
+                <div class="bg-brand-50 p-3 rounded-lg group-hover:bg-brand-800 transition-colors mb-4">
+                    <p class="text-[10px] font-bold text-brand-900 group-hover:text-white mb-1"><i class="fas fa-chart-line mr-1 text-blue-500"></i>中位 PFS: ~18.9 个月</p>
+                    <p class="text-[9px] text-brand-400 group-hover:text-white/50">临床预警: 需警惕间质性肺病 (ILD) 发生</p>
+                </div>
+            </div>
+            <p class="text-[9px] font-bold text-brand-400 group-hover:text-white/40 tracking-widest uppercase italic mt-auto border-t border-brand-50 group-hover:border-brand-800 pt-3">基于 FLAURA & AURA3</p>
+          </div>
+          
+          <div class="glass-card p-8 group hover:bg-brand-900 transition-all cursor-pointer flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-6">
+                    <span class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-mono font-black group-hover:bg-white transition-colors">1A</span>
+                    <span class="text-[10px] px-2 py-1 bg-green-100 text-green-700 font-bold rounded group-hover:bg-green-600 group-hover:text-white transition-colors">优先推荐</span>
+                </div>
+                <h4 class="text-2xl font-black text-brand-900 mb-1 group-hover:text-white transition-colors">阿来替尼</h4>
+                <p class="text-[11px] font-bold text-brand-400 group-hover:text-white/60 mb-4">第二代高选择性 ALK 抑制剂</p>
+                <div class="bg-brand-50 p-3 rounded-lg group-hover:bg-brand-800 transition-colors mb-4">
+                    <p class="text-[10px] font-bold text-brand-900 group-hover:text-white mb-1"><i class="fas fa-brain mr-1 text-indigo-500"></i>颅内 ORR: >81%</p>
+                    <p class="text-[9px] text-brand-400 group-hover:text-white/50">临床预警: 监测肌酸激酶及肝功能异常</p>
+                </div>
+            </div>
+            <p class="text-[9px] font-bold text-brand-400 group-hover:text-white/40 tracking-widest uppercase italic mt-auto border-t border-brand-50 group-hover:border-brand-800 pt-3">基于 ALEX 优效数据</p>
+          </div>
+
+          <div class="glass-card p-8 group hover:bg-brand-900 transition-all cursor-pointer flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-6">
+                    <span class="w-12 h-12 bg-cyan-50 text-cyan-600 rounded-xl flex items-center justify-center font-mono font-black group-hover:bg-white transition-colors">2A</span>
+                    <span class="text-[10px] px-2 py-1 bg-orange-100 text-orange-700 font-bold rounded group-hover:bg-orange-600 group-hover:text-white transition-colors">突破性疗法</span>
+                </div>
+                <h4 class="text-2xl font-black text-brand-900 mb-1 group-hover:text-white transition-colors">索托拉塞</h4>
+                <p class="text-[11px] font-bold text-brand-400 group-hover:text-white/60 mb-4">首创 KRAS G12C 靶向药</p>
+                <div class="bg-brand-50 p-3 rounded-lg group-hover:bg-brand-800 transition-colors mb-4">
+                    <p class="text-[10px] font-bold text-brand-900 group-hover:text-white mb-1"><i class="fas fa-vial mr-1 text-cyan-500"></i>后线 ORR: ~37.1%</p>
+                    <p class="text-[9px] text-brand-400 group-hover:text-white/50">临床预警: 联合免疫可导致严重肝毒性</p>
+                </div>
+            </div>
+            <p class="text-[9px] font-bold text-brand-400 group-hover:text-white/40 tracking-widest uppercase italic mt-auto border-t border-brand-50 group-hover:border-brand-800 pt-3">CodeBreaK 100 数据支持</p>
+          </div>
+
+          <div class="glass-card p-8 group hover:bg-brand-900 transition-all cursor-pointer flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-6">
+                    <span class="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center font-mono font-black group-hover:bg-white transition-colors">2B</span>
+                    <span class="text-[10px] px-2 py-1 bg-blue-100 text-blue-700 font-bold rounded group-hover:bg-blue-600 group-hover:text-white transition-colors">泛癌种 (Agnostic)</span>
+                </div>
+                <h4 class="text-2xl font-black text-brand-900 mb-1 group-hover:text-white transition-colors">恩曲替尼</h4>
+                <p class="text-[11px] font-bold text-brand-400 group-hover:text-white/60 mb-4">NTRK / ROS1 广谱抗癌药</p>
+                <div class="bg-brand-50 p-3 rounded-lg group-hover:bg-brand-800 transition-colors mb-4">
+                    <p class="text-[10px] font-bold text-brand-900 group-hover:text-white mb-1"><i class="fas fa-globe mr-1 text-rose-500"></i>整体 ORR: ~57.4%</p>
+                    <p class="text-[9px] text-brand-400 group-hover:text-white/50">临床预警: 认知障碍及中枢神经副作用</p>
+                </div>
+            </div>
+            <p class="text-[9px] font-bold text-brand-400 group-hover:text-white/40 tracking-widest uppercase italic mt-auto border-t border-brand-50 group-hover:border-brand-800 pt-3">STARTRK-2 篮子试验</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 原版 态势感知 (Genomic DB) -->
+  <main id="db-page" class="page-container w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div class="lg:col-span-8 space-y-10">
+        <!-- 原版 热图 -->
+        <div class="glass-card p-10">
+          <h3 class="text-xs font-black text-brand-900 tracking-widest uppercase mb-12 flex items-center gap-3">
+            <i class="fas fa-table-cells text-blue-600"></i> 实体瘤高频突变与共突变全景热图 (Mutation Heatmap)
+          </h3>
+          <div class="flex">
+              <!-- Y轴标签 -->
+              <div class="flex flex-col justify-around text-[9px] font-bold text-brand-400 uppercase tracking-widest pr-4 border-r border-brand-100 space-y-2 py-2">
+                  <div class="h-8 flex items-center">NSCLC</div>
+                  <div class="h-8 flex items-center">CRC</div>
+                  <div class="h-8 flex items-center">Breast</div>
+                  <div class="h-8 flex items-center">Melanoma</div>
+              </div>
+              <!-- 矩阵 (完整保留) -->
+              <div class="grid grid-cols-10 gap-1 p-2 bg-brand-50/30 w-full relative">
+                 <div class="heatmap-cell bg-red-500/80"><span class="heatmap-tooltip">EGFR in NSCLC: ~40% (Asian)</span></div>
+                 <div class="heatmap-cell bg-orange-500/60"><span class="heatmap-tooltip">KRAS in NSCLC: ~25%</span></div>
+                 <div class="heatmap-cell bg-red-600/90"><span class="heatmap-tooltip">TP53: Ubiquitous co-mutation (~60%)</span></div>
+                 <div class="heatmap-cell bg-blue-500/40"><span class="heatmap-tooltip">ALK: 5-7% Fusions</span></div>
+                 <div class="heatmap-cell bg-slate-200"><span class="heatmap-tooltip">PIK3CA: ~2%</span></div>
+                 <div class="heatmap-cell bg-blue-400/50"><span class="heatmap-tooltip">MET: 3-5% (Exon 14 / Amp)</span></div>
+                 <div class="heatmap-cell bg-slate-200"><span class="heatmap-tooltip">BRAF: 2-3% (V600E)</span></div>
+                 <div class="heatmap-cell bg-slate-200"><span class="heatmap-tooltip">RET: 1-2% Fusions</span></div>
+                 <div class="heatmap-cell bg-slate-200"><span class="heatmap-tooltip">ROS1: 1-2% Fusions</span></div>
+                 <div class="heatmap-cell bg-orange-400/40"><span class="heatmap-tooltip">STK11: Co-mut with KRAS (~15%)</span></div>
+                 
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-red-500/80"><span class="heatmap-tooltip">KRAS in CRC: ~40%</span></div>
+                 <div class="heatmap-cell bg-red-500/70"><span class="heatmap-tooltip">TP53 in CRC: ~50%</span></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-orange-500/50"><span class="heatmap-tooltip">PIK3CA in CRC: ~15%</span></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-blue-500/40"><span class="heatmap-tooltip">BRAF in CRC: ~10%</span></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-orange-500/60"><span class="heatmap-tooltip">TP53 in Breast: ~30%</span></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-red-500/80"><span class="heatmap-tooltip">PIK3CA in HR+ Breast: ~40%</span></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-red-600/90"><span class="heatmap-tooltip">HER2 Amp: ~20%</span></div>
+
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-blue-500/30"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-red-600/90"><span class="heatmap-tooltip">BRAF in Melanoma: ~50%</span></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+                 <div class="heatmap-cell bg-slate-100"></div>
+              </div>
+          </div>
+          <div class="flex justify-between mt-4 text-[8px] font-mono font-bold text-brand-400 uppercase tracking-widest pl-14 pr-2">
+            <span class="w-full text-center">EGFR</span><span class="w-full text-center">KRAS</span><span class="w-full text-center">TP53</span><span class="w-full text-center">ALK</span><span class="w-full text-center">PIK3CA</span><span class="w-full text-center">MET</span><span class="w-full text-center">BRAF</span><span class="w-full text-center">RET</span><span class="w-full text-center">ROS1</span><span class="w-full text-center">HER2</span>
+          </div>
+        </div>
+
+        <!-- 原版 耐药风险表 (修复移动端挤压) -->
+        <div class="glass-card p-10 overflow-hidden">
+           <h3 class="text-xs font-black text-brand-900 tracking-widest uppercase mb-8 flex justify-between">
+               <span>靶向药物继发性耐药发生率监控</span>
+               <span class="text-blue-600"><i class="fas fa-shield-virus"></i></span>
+           </h3>
+           <div class="w-full overflow-x-auto no-scrollbar">
+             <table class="w-full text-left text-sm min-w-[700px]">
+               <thead>
+                   <tr class="border-b-2 border-brand-100 text-[10px] text-brand-400 font-bold uppercase tracking-widest">
+                       <th class="pb-4">Resistance Mutation</th><th class="pb-4">Original Therapy</th><th class="pb-4">Mechanism Type</th><th class="pb-4">Frequency</th><th class="pb-4">Risk</th>
+                   </tr>
+               </thead>
+               <tbody class="text-[12px] font-bold text-brand-800">
+                 <tr class="border-b border-brand-50 hover:bg-slate-50 transition-colors">
+                     <td class="py-4 font-mono text-brand-900">EGFR T790M</td><td class="py-4 text-brand-400">1/2代 EGFR-TKI</td><td class="py-4">守门基因突变</td><td class="py-4">50% - 60%</td><td class="py-4"><span class="px-2 py-1 bg-red-100 text-red-600 rounded text-[9px] uppercase">Critical</span></td>
+                 </tr>
+                 <tr class="border-b border-brand-50 hover:bg-slate-50 transition-colors">
+                     <td class="py-4 font-mono text-brand-900">EGFR C797S</td><td class="py-4 text-brand-400">3代 EGFR-TKI</td><td class="py-4">共价结合位点突变</td><td class="py-4">15% - 25%</td><td class="py-4"><span class="px-2 py-1 bg-red-100 text-red-600 rounded text-[9px] uppercase">High</span></td>
+                 </tr>
+                 <tr class="border-b border-brand-50 hover:bg-slate-50 transition-colors">
+                     <td class="py-4 font-mono text-brand-900">MET Amp</td><td class="py-4 text-brand-400">EGFR-TKIs</td><td class="py-4">旁路激活</td><td class="py-4">15% - 20%</td><td class="py-4"><span class="px-2 py-1 bg-orange-100 text-orange-600 rounded text-[9px] uppercase">Medium</span></td>
+                 </tr>
+               </tbody>
+             </table>
+           </div>
+        </div>
+      </div>
+
+      <!-- 原版 底层算力 -->
+      <div class="lg:col-span-4 space-y-10">
+        <div class="glass-card p-10">
+          <h3 class="text-xs font-black text-brand-900 mb-10 tracking-widest uppercase">底层算力与数据库状态</h3>
+          <div class="space-y-10">
+             <div class="group">
+                 <div class="flex justify-between text-[10px] font-black mb-3 uppercase"><span>知识图谱引擎</span><span class="text-blue-600 font-mono">88%</span></div>
+                 <div class="w-full h-2 bg-brand-50 rounded-full overflow-hidden border border-brand-100"><div class="bg-brand-900 h-full transition-all duration-1000" style="width: 88%"></div></div>
+             </div>
+             <div class="group">
+                 <div class="flex justify-between text-[10px] font-black mb-3 uppercase"><span>NLP 文献解析</span><span class="text-brand-400 font-mono">35%</span></div>
+                 <div class="w-full h-2 bg-brand-50 rounded-full overflow-hidden border border-brand-100"><div class="bg-brand-400 h-full transition-all duration-1000" style="width: 35%"></div></div>
+             </div>
+             <div class="p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                 <p class="text-[10px] text-blue-600 font-bold mb-1 uppercase tracking-widest">Update Log</p>
+                 <p class="text-xs text-brand-800 font-medium">系统已完成 ESMO 2024 最新临床数据清洗，包含 T-DXd 新证。</p>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 原版 账户与导入 (Mine) -->
+  <main id="mine-page" class="page-container w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div class="lg:col-span-4 space-y-8">
+        <!-- 个人名片 -->
+        <div class="glass-card p-10 flex flex-col items-center text-center">
+          <div class="w-32 h-32 rounded-[3rem] bg-brand-900 flex items-center justify-center text-5xl text-white shadow-2xl mb-8 relative"><i class="fas fa-user-md"></i><div class="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 border-4 border-white rounded-full flex items-center justify-center text-white text-lg"><i class="fas fa-check"></i></div></div>
+          <h2 class="text-3xl font-black text-brand-900 mb-2">王建国 博士</h2>
+          <p class="text-blue-600 font-bold text-[10px] tracking-[0.4em] uppercase">主任医师 / 肿瘤内科专家</p>
+        </div>
+
+        <div class="glass-card p-8">
+           <h3 class="text-xs font-black text-brand-900 mb-6 tracking-widest uppercase flex items-center gap-2">
+              <i class="fas fa-shield-halved text-blue-600"></i> 隐私合规与权限状态
+           </h3>
+           <div class="space-y-4">
+              <div class="flex justify-between text-[10px] font-bold">
+                 <span class="text-brand-400 uppercase">HIPAA 合规</span>
+                 <span class="text-green-600"><i class="fas fa-circle-check"></i> 已认证</span>
+              </div>
+              <div class="flex justify-between text-[10px] font-bold">
+                 <span class="text-brand-400 uppercase">数据加密层</span>
+                 <span class="text-brand-900 font-mono">AES-256 / TLS 1.3</span>
+              </div>
+              <div class="flex justify-between text-[10px] font-bold">
+                 <span class="text-brand-400 uppercase">API 调用额度</span>
+                 <span class="text-blue-600 font-mono">84,200 / 100,000</span>
+              </div>
+              <div class="w-full bg-brand-50 h-1.5 rounded-full overflow-hidden mt-2 border border-brand-100">
+                 <div class="bg-blue-600 h-full" style="width: 84%"></div>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-8 flex flex-col gap-10">
+        <div class="glass-card p-10">
+           <h3 class="text-sm font-black text-brand-900 tracking-widest uppercase mb-8"><i class="fas fa-file-import text-blue-600 mr-2"></i> NGS 基因检测报告解析中心</h3>
+           <div class="border-2 border-dashed border-blue-500/30 rounded-3xl p-10 text-center transition-all hover:bg-blue-50 hover:border-blue-600 cursor-pointer" onclick="document.getElementById('fileInput').click()">
+              <i class="fas fa-cloud-arrow-up text-4xl text-brand-100 mb-4"></i>
+              <p class="text-sm font-bold text-brand-400 uppercase tracking-widest">点击或拖拽第三方基因报告至此 (PDF/VCF)</p>
+              <input type="file" id="fileInput" class="hidden" accept=".pdf,.vcf,.xls,.csv" onchange="handleFileImport(event)">
+           </div>
+        </div>
+
+        <!-- 私有化档案库 -->
+        <div class="glass-card p-0 overflow-hidden flex flex-col">
+          <div class="p-8 border-b border-brand-50 bg-white/40 flex justify-between items-center"><h3 class="text-sm font-black text-brand-900 tracking-widest uppercase"><i class="fas fa-folder-open text-blue-600 mr-2"></i> 临床研判私有化档案库</h3><span class="text-[9px] font-black text-brand-400 uppercase" id="plan-count">已存档 0 份</span></div>
+          <div class="p-8 space-y-6 overflow-y-auto max-h-[500px] no-scrollbar" id="saved-plans-container">
+             <div class="flex items-center justify-center h-48 flex-col gap-4 opacity-30"><i class="fas fa-database text-4xl"></i><p class="text-[10px] font-bold uppercase tracking-widest">暂无已保存的临床决策</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 原版 移动端底部导航栏 -->
+  <nav class="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-white/95 backdrop-blur-3xl border border-brand-50 rounded-full z-[1000] px-4 py-4 flex justify-around items-center shadow-2xl">
+    <div class="nav-item flex flex-col items-center gap-1.5 cursor-pointer text-brand-900" data-target="home" onclick="switchTab('home')"><i class="fas fa-home-lg text-lg"></i><span class="text-[8px] font-black uppercase">首页</span></div>
+    <div class="nav-item flex flex-col items-center gap-1.5 cursor-pointer text-brand-400" data-target="hub" onclick="switchTab('hub')"><i class="fas fa-brain text-lg"></i><span class="text-[8px] font-black uppercase">演算</span></div>
+    <div class="nav-item flex flex-col items-center gap-1.5 cursor-pointer text-brand-400" data-target="db" onclick="switchTab('db')"><i class="fas fa-database text-lg"></i><span class="text-[8px] font-black uppercase">数据</span></div>
+    <div class="nav-item flex flex-col items-center gap-1.5 cursor-pointer text-brand-400" data-target="mine" onclick="switchTab('mine')"><i class="fas fa-folder-open text-lg"></i><span class="text-[8px] font-black uppercase">档案</span></div>
+  </nav>
+</div>
+
+
+<!-- ================= 核心代码区块 2：超级丰富版 患者端 (Patient Portal) ================= -->
+<div id="terminal-patient" class="terminal-container w-full max-w-6xl mx-auto pt-24 pb-28 px-4 relative">
+    <!-- 患者端头部 -->
+    <header class="fixed top-4 left-4 right-4 lg:left-1/2 lg:-translate-x-1/2 lg:w-[calc(100%-4rem)] lg:max-w-6xl z-[500] bg-white/90 backdrop-blur-2xl border border-white rounded-full px-4 sm:px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0" onclick="showRoleModal()" title="点击切换终端">
+            <div class="w-10 h-10 bg-patient-50 rounded-full flex items-center justify-center text-patient-600"><i class="fas fa-heartbeat text-lg"></i></div>
+            <span class="text-base sm:text-xl font-black tracking-tighter text-brand-900 whitespace-nowrap">ZHILIAO<span class="text-patient-600 font-normal ml-1">个人版</span></span>
+        </div>
+        <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+            <span class="text-[10px] font-bold text-patient-600 bg-patient-50 px-3 py-1.5 rounded-full uppercase tracking-widest hidden md:inline-block border border-patient-100"><i class="fas fa-lock mr-1"></i> HIPAA 隐私保护中</span>
+            <div class="w-10 h-10 rounded-full bg-patient-600 text-white flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform relative">
+                <i class="fas fa-user text-sm"></i>
+                <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+            </div>
+        </div>
+    </header>
+
+    <div class="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:h-[80vh]">
+        <!-- 左侧：健康档案与用药管家 -->
+        <div class="lg:col-span-4 flex flex-col gap-6 lg:h-full lg:overflow-y-auto no-scrollbar pb-6">
+            
+            <!-- 丰富：患者身份卡片 -->
+            <div class="glass-card p-8 flex-shrink-0 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-patient-50 rounded-bl-full -z-10 transition-transform group-hover:scale-125"></div>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h3 class="text-2xl font-black text-brand-900 mb-1">李雪梅</h3>
+                        <p class="text-xs text-brand-400 font-bold">52岁 | 肺腺癌术后 (Stage IIA)</p>
+                    </div>
+                    <div class="w-12 h-12 bg-patient-100 text-patient-600 rounded-full flex items-center justify-center text-xl"><i class="fas fa-female"></i></div>
+                </div>
+                <div class="bg-brand-50 p-3 rounded-xl flex justify-between items-center border border-brand-100">
+                    <span class="text-[10px] font-bold text-brand-400 uppercase tracking-widest">距离下次影像复查还有</span>
+                    <span class="text-lg font-black text-brand-900">14 <span class="text-xs font-normal">天</span></span>
+                </div>
+            </div>
+
+            <!-- 丰富：健康体征与随访指标 -->
+            <div class="glass-card p-6 flex-shrink-0">
+                <h4 class="text-[10px] font-black text-brand-900 uppercase tracking-widest mb-4 flex justify-between items-center">
+                    <span><i class="fas fa-heart-pulse text-red-500 mr-2"></i> 核心体征监测</span>
+                    <span class="text-brand-400 text-[8px] cursor-pointer hover:text-patient-600">历史趋势 <i class="fas fa-chart-line"></i></span>
+                </h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-brand-400 font-bold">NRS 疼痛评分</span>
+                        <span class="font-black text-green-500">2 分 <span class="text-[8px] text-brand-400 font-normal">/ 轻度</span></span>
+                    </div>
+                    <div class="w-full bg-brand-50 h-1.5 rounded-full overflow-hidden"><div class="bg-green-500 h-full" style="width: 20%"></div></div>
+                    
+                    <div class="flex justify-between items-center text-xs mt-2">
+                        <span class="text-brand-400 font-bold">近期体重波动</span>
+                        <span class="font-black text-brand-900">58.5 kg <span class="text-[8px] text-red-500 font-normal"><i class="fas fa-arrow-down"></i> 1.2kg</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 丰富：康复与营养建议 -->
+            <div class="glass-card p-6 flex-shrink-0 bg-gradient-to-br from-patient-50/50 to-white border-patient-100">
+                <h4 class="text-[10px] font-black text-brand-900 uppercase tracking-widest mb-3 flex items-center">
+                    <i class="fas fa-apple-whole text-patient-600 mr-2"></i> 营养膳食红绿灯
+                </h4>
+                <div class="flex gap-2 text-[10px] font-bold">
+                    <div class="flex-1 bg-red-50 text-red-600 p-2 rounded-lg border border-red-100 flex flex-col items-center text-center">
+                        <i class="fas fa-ban mb-1"></i> 西柚/葡萄柚<br><span class="text-[8px] opacity-70 mt-1">影响靶向药代谢</span>
+                    </div>
+                    <div class="flex-1 bg-green-50 text-patient-800 p-2 rounded-lg border border-patient-100 flex flex-col items-center text-center">
+                        <i class="fas fa-check-circle mb-1"></i> 优质高蛋白<br><span class="text-[8px] opacity-70 mt-1">鱼肉、鸡蛋推荐</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 丰富：智能用药管家 -->
+            <div class="glass-card p-6 flex-shrink-0">
+                <h4 class="text-[10px] font-black text-brand-900 uppercase tracking-widest mb-4 flex justify-between items-center">
+                    <span><i class="fas fa-pills text-patient-600 mr-2"></i> 今日用药管家</span>
+                    <span class="text-patient-600 bg-patient-50 px-2 py-0.5 rounded text-[8px]">打卡</span>
+                </h4>
+                <div class="flex items-center justify-between p-3 bg-white border border-brand-50 rounded-xl shadow-sm hover:border-patient-600 transition-colors cursor-pointer group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-orange-50 text-orange-500 rounded flex items-center justify-center"><i class="fas fa-capsules"></i></div>
+                        <div>
+                            <p class="text-xs font-bold text-brand-900 mb-0.5">奥希替尼 (80mg)</p>
+                            <p class="text-[9px] text-brand-400">设定时间: 上午 09:00</p>
+                        </div>
+                    </div>
+                    <!-- 模拟已打卡状态 -->
+                    <div class="w-6 h-6 rounded-full bg-patient-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform"><i class="fas fa-check text-[10px]"></i></div>
+                </div>
+            </div>
+
+            <!-- 健康档案上传区 -->
+            <div class="glass-card p-6 flex-shrink-0 flex flex-col relative">
+                <h4 class="text-[10px] font-black text-brand-400 uppercase tracking-widest mb-4">云端健康档案夹</h4>
+                <div class="border-2 border-dashed border-patient-600/30 bg-patient-50/50 hover:bg-patient-50 rounded-2xl p-6 text-center transition-all cursor-pointer group mb-4 shrink-0" onclick="document.getElementById('patientFileInput').click()">
+                    <i class="fas fa-cloud-upload-alt text-2xl text-patient-600 mb-2 group-hover:-translate-y-1 transition-transform"></i>
+                    <p class="text-[10px] font-bold text-patient-600">点击上传病理或基因检测报告</p>
+                    <input type="file" id="patientFileInput" class="hidden" accept=".pdf,.jpg,.png" onchange="patientUploadFile(event)">
+                </div>
+                <div class="overflow-y-auto no-scrollbar space-y-3 max-h-32" id="patient-archive-list">
+                    <!-- 预留档案条目 -->
+                    <div class="p-4 bg-brand-50 rounded-xl flex items-center gap-4 opacity-50 border border-brand-100">
+                        <i class="fas fa-folder-open text-brand-200 text-xl"></i>
+                        <div><p class="text-xs font-bold text-brand-900">暂无档案记录</p><p class="text-[9px] text-brand-400">您的数据只有您和授权医生可见</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：丰富版 AI 医疗助手 -->
+        <div class="lg:col-span-8 glass-card flex flex-col overflow-hidden h-[70vh] lg:h-full">
+            <div class="p-6 border-b border-brand-50 bg-white/50 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="relative"><i class="fas fa-robot text-2xl text-patient-600"></i><span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span></div>
+                    <div><h3 class="text-sm font-black text-brand-900">大模型 AI 问诊助手</h3><p class="text-[9px] text-patient-600 font-bold uppercase tracking-widest">Powered by 智疗云 RWD 引擎</p></div>
+                </div>
+                <button class="text-xs text-brand-400 hover:text-brand-900 font-bold"><i class="fas fa-history mr-1"></i> 历史对话</button>
+            </div>
+            
+            <div class="flex-grow p-6 overflow-y-auto custom-scrollbar flex flex-col gap-4 bg-brand-50/20" id="patient-chat-box">
+                <!-- 初始欢迎语 -->
+                <div class="flex w-full mb-2 justify-start chat-bubble">
+                    <div class="bg-white border border-brand-50 px-5 py-4 rounded-2xl rounded-tl-none text-sm max-w-[85%] shadow-sm text-brand-900 leading-relaxed font-medium flex gap-4">
+                        <i class="fas fa-hand-holding-medical text-patient-600 mt-1 text-lg"></i>
+                        <div>
+                            <p class="mb-3">李女士，您好！我是智疗 AI 助手。您可以向我咨询**疾病知识、用药副作用管理**，或者直接在左侧**上传您的新报告**，我会为您进行通俗易懂的解读。</p>
+                            <p class="text-[11px] text-brand-400">您可以试试点击下方的问题：</p>
+                            <!-- 丰富：快捷提问按钮 -->
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <span onclick="quickAsk('吃奥希替尼期间，手指甲周围发炎疼痛怎么办？')" class="px-3 py-1.5 bg-patient-50 text-patient-600 border border-patient-100 rounded-full text-[10px] cursor-pointer hover:bg-patient-600 hover:text-white transition-colors">甲沟炎怎么办？</span>
+                                <span onclick="quickAsk('靶向药今天早上忘记吃了，下午想起来还需要补服吗？')" class="px-3 py-1.5 bg-patient-50 text-patient-600 border border-patient-100 rounded-full text-[10px] cursor-pointer hover:bg-patient-600 hover:text-white transition-colors">漏服了怎么办？</span>
+                                <span onclick="quickAsk('复查前需要空腹吗？能正常吃降压药吗？')" class="px-3 py-1.5 bg-patient-50 text-patient-600 border border-patient-100 rounded-full text-[10px] cursor-pointer hover:bg-patient-600 hover:text-white transition-colors">复查前注意事项</span>
+                                <span onclick="quickAsk('最近经常失眠，精神压力大，有什么缓解方法吗？')" class="px-3 py-1.5 bg-patient-50 text-patient-600 border border-patient-100 rounded-full text-[10px] cursor-pointer hover:bg-patient-600 hover:text-white transition-colors">心理与失眠调节</span>
+                                <span onclick="quickAsk('最新的抗癌药有没有进医保报销？流程是什么？')" class="px-3 py-1.5 bg-patient-50 text-patient-600 border border-patient-100 rounded-full text-[10px] cursor-pointer hover:bg-patient-600 hover:text-white transition-colors">医保报销政策咨询</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-t border-brand-50 shrink-0">
+                <div class="relative flex items-center bg-brand-50 rounded-2xl">
+                    <!-- 新增：多模态输入按钮 -->
+                    <button class="pl-4 pr-2 text-brand-400 hover:text-patient-600 transition-colors" onclick="alert('语音输入功能正在初始化...')"><i class="fas fa-microphone"></i></button>
+                    <button class="px-2 text-brand-400 hover:text-patient-600 transition-colors" onclick="document.getElementById('patientFileInput').click()"><i class="fas fa-image"></i></button>
+                    
+                    <input type="text" id="patient-chat-input" placeholder="输入您的健康疑问，或让 AI 帮您解读报告..." class="w-full bg-transparent border-none py-4 pl-2 pr-16 text-sm text-brand-900 focus:ring-0 outline-none transition-all" onkeypress="if(event.key === 'Enter') sendPatientMsg()">
+                    <button onclick="sendPatientMsg()" class="absolute right-2 w-10 h-10 bg-patient-600 text-white rounded-xl flex items-center justify-center hover:bg-patient-700 transition-colors shadow-md"><i class="fas fa-paper-plane"></i></button>
+                </div>
+                <p class="text-[9px] text-center text-brand-400 mt-2 font-medium">免责声明：AI 回复仅供医学科普参考，不能替代专业医生的当面诊断。紧急不适请立即就医。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================= 核心代码区块 3：超级丰富版 制药/研发端 (Pharma Portal) ================= -->
+<div id="terminal-pharma" class="terminal-container w-full max-w-6xl mx-auto pt-24 pb-28 px-4 relative">
+    <header class="fixed top-4 left-4 right-4 lg:left-1/2 lg:-translate-x-1/2 lg:w-[calc(100%-4rem)] lg:max-w-6xl z-[500] bg-white/90 backdrop-blur-2xl border border-white rounded-full px-4 sm:px-6 py-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center gap-2 sm:gap-3 cursor-pointer min-w-0" onclick="showRoleModal()" title="点击切换终端">
+            <div class="w-10 h-10 bg-pharma-50 rounded-full flex items-center justify-center text-pharma-600"><i class="fas fa-globe text-lg"></i></div>
+            <span class="text-base sm:text-xl font-black tracking-tighter text-brand-900 whitespace-nowrap">ZHILIAO<span class="text-pharma-600 font-normal ml-1">研发基建</span></span>
+        </div>
+        <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+            <span class="text-[10px] font-bold text-pharma-600 bg-pharma-50 px-3 py-1.5 rounded-full uppercase tracking-widest hidden md:inline-block border border-pharma-100"><i class="fas fa-satellite-dish mr-1 animate-pulse"></i> Global RWD 在线同步中</span>
+            <div class="w-10 h-10 rounded-full bg-pharma-600 text-white flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform"><i class="fas fa-building text-sm"></i></div>
+        </div>
+    </header>
+
+    <!-- 顶部宏观大盘数据 -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8 mb-8">
+        <div class="glass-card p-6 border-t-4 border-t-pharma-600 group hover:bg-pharma-50 transition-colors">
+            <p class="text-[10px] text-brand-400 font-bold uppercase tracking-widest mb-1 group-hover:text-pharma-600">结构化真实世界病例 (RWD)</p>
+            <h3 class="text-3xl font-black text-brand-900 mb-2 font-mono tracking-tighter">2,450,192</h3>
+            <div class="w-full bg-brand-50 h-1 rounded-full mb-2"><div class="bg-pharma-600 h-full" style="width: 80%"></div></div>
+            <p class="text-[9px] text-green-600 font-bold flex items-center gap-1"><i class="fas fa-arrow-trend-up"></i> 本周新增入库 12,400 例</p>
+        </div>
+        <div class="glass-card p-6 border-t-4 border-t-blue-500 group hover:bg-blue-50 transition-colors">
+            <p class="text-[10px] text-brand-400 font-bold uppercase tracking-widest mb-1 group-hover:text-blue-600">活跃接入临床试验 (Trials)</p>
+            <h3 class="text-3xl font-black text-brand-900 mb-2 font-mono tracking-tighter">342</h3>
+            <div class="w-full bg-brand-50 h-1 rounded-full mb-2"><div class="bg-blue-500 h-full" style="width: 65%"></div></div>
+            <p class="text-[9px] text-brand-400 font-bold flex items-center gap-1"><i class="fas fa-chart-pie"></i> Phase II / III 占比 78%</p>
+        </div>
+        <div class="glass-card p-6 border-t-4 border-t-cyan-500 group hover:bg-cyan-50 transition-colors">
+            <p class="text-[10px] text-brand-400 font-bold uppercase tracking-widest mb-1 group-hover:text-cyan-600">成功招募入组人次</p>
+            <h3 class="text-3xl font-black text-brand-900 mb-2 font-mono tracking-tighter">14,209</h3>
+            <div class="w-full bg-brand-50 h-1 rounded-full mb-2"><div class="bg-cyan-500 h-full" style="width: 90%"></div></div>
+            <p class="text-[9px] text-brand-400 font-bold flex items-center gap-1"><i class="fas fa-stopwatch"></i> 平均招募周期缩短 40.5%</p>
+        </div>
+        <!-- 新增 4：安全性数据卡片 -->
+        <div class="glass-card p-6 border-t-4 border-t-purple-500 group hover:bg-purple-50 transition-colors">
+            <p class="text-[10px] text-brand-400 font-bold uppercase tracking-widest mb-1 group-hover:text-purple-600">不良反应库 (AE/SAE)</p>
+            <h3 class="text-3xl font-black text-brand-900 mb-2 font-mono tracking-tighter">84,592</h3>
+            <div class="w-full bg-brand-50 h-1 rounded-full mb-2"><div class="bg-purple-500 h-full" style="width: 45%"></div></div>
+            <p class="text-[9px] text-orange-500 font-bold flex items-center gap-1"><i class="fas fa-exclamation-triangle"></i> 3级以上不良反应 12%</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- 左侧：靶点分布与预警 -->
+        <div class="lg:col-span-4 flex flex-col gap-8">
+            <!-- 热门靶点分布 -->
+            <div class="glass-card p-8 shrink-0">
+                <h3 class="text-sm font-black text-brand-900 tracking-widest uppercase mb-6 flex justify-between items-center border-b border-brand-50 pb-4">
+                    <span>热门变异靶点全网占比</span><i class="fas fa-chart-bar text-pharma-600"></i>
+                </h3>
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between text-[11px] font-black mb-2"><span class="text-brand-900">EGFR (Sensitizing)</span><span class="text-pharma-600 font-mono">38.4%</span></div>
+                        <div class="w-full h-2.5 bg-brand-50 rounded-full overflow-hidden"><div class="bg-pharma-600 h-full" style="width: 38.4%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] font-black mb-2"><span class="text-brand-900">KRAS (G12C/D/V)</span><span class="text-pharma-600 font-mono">24.2%</span></div>
+                        <div class="w-full h-2.5 bg-brand-50 rounded-full overflow-hidden"><div class="bg-pharma-600 h-full opacity-80" style="width: 24.2%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] font-black mb-2"><span class="text-brand-900">HER2 (Amp/Mut)</span><span class="text-pharma-600 font-mono">11.8%</span></div>
+                        <div class="w-full h-2.5 bg-brand-50 rounded-full overflow-hidden"><div class="bg-pharma-600 h-full opacity-60" style="width: 11.8%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 丰富：区域真实世界队列分布 -->
+            <div class="glass-card p-8 flex-shrink-0">
+                <h3 class="text-sm font-black text-brand-900 tracking-widest uppercase mb-6 flex justify-between items-center border-b border-brand-50 pb-4">
+                    <span>靶向治疗优势人群热力分布</span><i class="fas fa-map-location-dot text-pharma-600"></i>
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-[11px] font-black text-brand-900">华东区域 (East China)</p>
+                            <p class="text-[9px] text-brand-400">EGFR 突变丰度偏高</p>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-pharma-600">42%</span>
+                    </div>
+                    <div class="w-full bg-brand-50 h-1.5 rounded-full overflow-hidden"><div class="bg-pharma-600 h-full" style="width: 42%"></div></div>
+                    
+                    <div class="flex justify-between items-end mt-3">
+                        <div>
+                            <p class="text-[11px] font-black text-brand-900">华南区域 (South China)</p>
+                            <p class="text-[9px] text-brand-400">临床入组最活跃</p>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-pharma-600">28%</span>
+                    </div>
+                    <div class="w-full bg-brand-50 h-1.5 rounded-full overflow-hidden"><div class="bg-pharma-600 h-full opacity-80" style="width: 28%"></div></div>
+                </div>
+            </div>
+
+            <!-- 丰富：耐药突变爆发趋势雷达 -->
+            <div class="glass-card p-8 flex-grow">
+                <h3 class="text-sm font-black text-brand-900 tracking-widest uppercase mb-6 flex justify-between items-center border-b border-brand-50 pb-4">
+                    <span>耐药突变趋势预警 (Q3)</span><i class="fas fa-radar text-red-500 animate-pulse"></i>
+                </h3>
+                <div class="space-y-4">
+                    <div class="p-4 bg-red-50/50 border border-red-100 rounded-xl flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-black text-brand-900 font-mono">EGFR C797S</p>
+                            <p class="text-[9px] text-brand-400">三代 TKI 继发耐药</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-red-600"><i class="fas fa-caret-up"></i> 12.4%</p>
+                            <p class="text-[8px] text-brand-400">环比增长</p>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-orange-50/50 border border-orange-100 rounded-xl flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-black text-brand-900 font-mono">MET Amp</p>
+                            <p class="text-[9px] text-brand-400">旁路激活</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-orange-500"><i class="fas fa-caret-up"></i> 8.7%</p>
+                            <p class="text-[8px] text-brand-400">环比增长</p>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-[9px] text-center text-brand-400 mt-6 italic">预警提示：C797S 突变丰度在华东区域临床样本中呈现显著聚集上升态势，建议重点关注四代靶向药研发立项。</p>
+            </div>
+        </div>
+
+        <!-- 右侧：临床受试者匹配引擎 (修复移动端挤压) -->
+        <div class="lg:col-span-8 glass-card p-0 overflow-hidden flex flex-col h-full">
+            <div class="p-8 border-b border-brand-50 bg-white/40">
+                <h3 class="text-sm font-black text-brand-900 tracking-widest uppercase flex items-center gap-2"><i class="fas fa-users-viewfinder text-pharma-600"></i> CRO 临床试验受试者漏斗智配引擎</h3>
+                <p class="text-[10px] text-brand-400 font-bold mt-2">实时遍历全国 1,200+ 三甲医院医生端最新基因检测数据档案</p>
+            </div>
+            
+            <div class="overflow-x-auto p-4 no-scrollbar">
+                <table class="w-full text-left min-w-[800px]">
+                    <thead>
+                        <tr class="border-b border-brand-100 text-[10px] text-brand-400 font-bold uppercase tracking-widest">
+                            <th class="pb-3 pl-4">NCT 编号 / 药物项目</th>
+                            <th class="pb-3">适应症 & 入组靶点</th>
+                            <th class="pb-3 text-center">当前进度</th>
+                            <th class="pb-3 text-right">潜在合规患者</th>
+                            <th class="pb-3 text-center">招募操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-[12px] font-bold text-brand-800">
+                        <tr class="border-b border-brand-50 hover:bg-pharma-50/50 transition-colors group">
+                            <td class="py-4 pl-4"><p class="text-brand-900 font-black">NCT04567890</p><p class="text-[9px] text-brand-400">Firm-JNJ-7376 (Exon20)</p></td>
+                            <td class="py-4"><p>晚期 NSCLC</p><p class="text-[10px] text-pharma-600 font-mono bg-pharma-50 inline-block px-1 rounded mt-0.5">EGFR Exon20ins</p></td>
+                            <td class="py-4 text-center"><span class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-md text-[9px]">Phase III</span></td>
+                            <td class="py-4 text-right"><span class="font-mono text-lg text-brand-900">1,240</span> <span class="text-[9px] text-brand-400">人</span></td>
+                            <td class="py-4 text-center"><button onclick="alert('指令下发成功！系统已通过 CDSS 面板向这 1,240 名患者的主治医师(医院端)精准推送入组招募弹窗提醒。')" class="px-4 py-2 bg-brand-900 text-white rounded-lg text-[10px] hover:bg-pharma-600 transition-colors shadow-sm active:scale-95">下发招募给医生</button></td>
+                        </tr>
+                        <tr class="border-b border-brand-50 hover:bg-pharma-50/50 transition-colors group">
+                            <td class="py-4 pl-4"><p class="text-brand-900 font-black">NCT03987654</p><p class="text-[9px] text-brand-400">AMG-510 联用方案</p></td>
+                            <td class="py-4"><p>结直肠癌 (CRC)</p><p class="text-[10px] text-pharma-600 font-mono bg-pharma-50 inline-block px-1 rounded mt-0.5">KRAS G12C + TP53</p></td>
+                            <td class="py-4 text-center"><span class="px-2 py-1 bg-cyan-50 text-cyan-600 border border-cyan-100 rounded-md text-[9px]">Phase II</span></td>
+                            <td class="py-4 text-right"><span class="font-mono text-lg text-brand-900">856</span> <span class="text-[9px] text-brand-400">人</span></td>
+                            <td class="py-4 text-center"><button onclick="alert('指令下发成功！')" class="px-4 py-2 bg-brand-900 text-white rounded-lg text-[10px] hover:bg-pharma-600 transition-colors shadow-sm active:scale-95">下发招募给医生</button></td>
+                        </tr>
+                        <tr class="border-b border-brand-50 hover:bg-pharma-50/50 transition-colors group">
+                            <td class="py-4 pl-4"><p class="text-brand-900 font-black">NCT05211233</p><p class="text-[9px] text-brand-400">双抗药物注射液</p></td>
+                            <td class="py-4"><p>泛实体瘤 (Agnostic)</p><p class="text-[10px] text-pharma-600 font-mono bg-pharma-50 inline-block px-1 rounded mt-0.5">HER2 强阳性 / Amp</p></td>
+                            <td class="py-4 text-center"><span class="px-2 py-1 bg-orange-50 text-orange-600 border border-orange-100 rounded-md text-[9px]">Phase I/II</span></td>
+                            <td class="py-4 text-right"><span class="font-mono text-lg text-brand-900">3,402</span> <span class="text-[9px] text-brand-400">人</span></td>
+                            <td class="py-4 text-center"><button onclick="alert('指令下发成功！')" class="px-4 py-2 bg-brand-900 text-white rounded-lg text-[10px] hover:bg-pharma-600 transition-colors shadow-sm active:scale-95">下发招募给医生</button></td>
+                        </tr>
+                        <tr class="hover:bg-pharma-50/50 transition-colors group">
+                            <td class="py-4 pl-4"><p class="text-brand-900 font-black">NCT04123456</p><p class="text-[9px] text-brand-400">新型 ROS1 抑制剂</p></td>
+                            <td class="py-4"><p>晚期 NSCLC 脑转移</p><p class="text-[10px] text-pharma-600 font-mono bg-pharma-50 inline-block px-1 rounded mt-0.5">ROS1 Fusion</p></td>
+                            <td class="py-4 text-center"><span class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-md text-[9px]">Phase III</span></td>
+                            <td class="py-4 text-right"><span class="font-mono text-lg text-brand-900">115</span> <span class="text-[9px] text-brand-400">人</span></td>
+                            <td class="py-4 text-center"><button onclick="alert('指令下发成功！')" class="px-4 py-2 bg-brand-900 text-white rounded-lg text-[10px] hover:bg-pharma-600 transition-colors shadow-sm active:scale-95">下发招募给医生</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 真实世界证据洞察 (RWE Insights) -->
+            <div class="p-8 bg-brand-50/50 border-t border-brand-50 mt-auto">
+                <h3 class="text-xs font-black text-brand-900 tracking-widest uppercase flex items-center gap-2 mb-6"><i class="fas fa-chart-line text-pharma-600"></i> 真实世界疗效洞察 (RWE vs RCT)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white border border-brand-50 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                        <h4 class="text-xs font-black text-brand-900 mb-1">KRAS G12C 靶向药后线治疗</h4>
+                        <p class="text-[9px] text-brand-400 font-bold uppercase mb-4">真实世界数据偏离度分析</p>
+                        <div class="flex items-center gap-4 mb-3">
+                            <div class="flex-1">
+                                <p class="text-[10px] text-brand-400 mb-1">RCT 临床试验 mPFS</p>
+                                <p class="text-sm font-black text-blue-600 font-mono">6.8 个月</p>
+                            </div>
+                            <div class="flex-1 border-l border-brand-50 pl-4">
+                                <p class="text-[10px] text-brand-400 mb-1">真实世界 RWD mPFS</p>
+                                <p class="text-sm font-black text-orange-500 font-mono">5.2 个月 <i class="fas fa-arrow-down text-[10px]"></i></p>
+                            </div>
+                        </div>
+                        <p class="text-[9px] text-brand-400 bg-brand-50 p-2 rounded">洞察：合并 STK11/KEAP1 共突变在真实世界队列中占比超 30%，显著拉低整体生存获益，建议探索联合免疫疗法。</p>
+                    </div>
+                    
+                    <div class="bg-white border border-brand-50 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                        <h4 class="text-xs font-black text-brand-900 mb-1">EGFR 三代 TKI 脑转移队列</h4>
+                        <p class="text-[9px] text-brand-400 font-bold uppercase mb-4">颅内病灶控制率 (iORR)</p>
+                        <div class="flex items-center gap-4 mb-3">
+                            <div class="flex-1">
+                                <p class="text-[10px] text-brand-400 mb-1">FLAURA 数据参考</p>
+                                <p class="text-sm font-black text-blue-600 font-mono">66.0%</p>
+                            </div>
+                            <div class="flex-1 border-l border-brand-50 pl-4">
+                                <p class="text-[10px] text-brand-400 mb-1">智疗云 RWD 验证</p>
+                                <p class="text-sm font-black text-green-600 font-mono">68.4% <i class="fas fa-arrow-up text-[10px]"></i></p>
+                            </div>
+                        </div>
+                        <p class="text-[9px] text-brand-400 bg-brand-50 p-2 rounded">洞察：真实世界证据高度吻合注册临床试验结果，且在伴随 TP53 突变的亚组中，颅内高浓度仍维持了较好的疾病控制。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-brand-50/50 text-center border-t border-brand-50 shrink-0">
+                <p class="text-[10px] text-brand-400 font-bold uppercase tracking-widest"><i class="fas fa-lock mr-1"></i> 数据经脱敏化处理，仅支持向就诊医院下发通知，不显示患者实名信息</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================= 原版所有弹窗集合 ================= -->
+<div id="loading-modal" class="fixed inset-0 z-[2000] bg-white/98 backdrop-blur-3xl hidden flex-col items-center justify-center transition-all duration-700 opacity-0">
+  <div class="w-14 h-14 border-4 border-brand-50 border-t-blue-600 rounded-full animate-spin mb-10"></div>
+  <p id="loading-text" class="text-xs font-black text-brand-900 tracking-[0.4em] uppercase">正在遍历全球千万级真实世界证据...</p>
+</div>
+
+<!-- AI 动态研判报告弹窗 (复用作为查看弹窗) -->
+<div id="report-modal" class="fixed inset-0 z-[1900] bg-brand-900/60 backdrop-blur-xl hidden items-center justify-center p-4 transition-all duration-500 opacity-0">
+  <div class="w-full max-w-2xl bg-white border-t-[12px] border-blue-600 rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col transform translate-y-20 transition-transform duration-700" id="report-content">
+    <div class="p-10 border-b-2 border-brand-50 flex justify-between items-center relative shrink-0 bg-brand-50/30">
+       <div class="relative z-10"><h3 class="text-2xl font-black text-brand-900 tracking-tighter uppercase" id="report-title-head">AI CDSS 研判报告</h3><p class="text-blue-600 text-[10px] font-mono font-black uppercase mt-2 tracking-[0.3em]"><span id="report-time"></span></p></div>
+       <button onclick="closeReport()" class="w-14 h-14 bg-white border border-brand-100 rounded-2xl flex items-center justify-center text-brand-900 hover:rotate-90 transition-transform"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="p-10 overflow-y-auto max-h-[65vh] space-y-10 no-scrollbar">
+      <div><label class="text-[9px] font-black text-brand-400 uppercase block mb-2 tracking-[0.3em]">Confirmed Biomarker & Disease</label><div class="text-4xl font-black text-brand-900 border-b-4 border-blue-600/10 pb-4 inline-block tracking-tight" id="report-mutation">EGFR T790M</div></div>
+      <div class="grid grid-cols-2 gap-4"><div class="p-6 bg-blue-50 rounded-3xl"><div class="text-blue-600 text-[9px] font-black uppercase mb-1">证据置信度</div><div class="text-2xl font-black text-brand-900 tracking-tighter" id="report-confidence">97.4%</div></div><div class="p-6 bg-cyan-50 rounded-3xl"><div class="text-cyan-600 text-[9px] font-black uppercase mb-1">NCCN 循证级别</div><div class="text-2xl font-black text-brand-900 tracking-tighter" id="report-loe">Level 1A</div></div></div>
+      <div class="p-8 bg-brand-50 rounded-[2.5rem] border-2 border-brand-100">
+        <h4 class="text-[10px] font-black text-brand-400 uppercase mb-6 tracking-[0.3em] flex justify-between"><span>智慧决策结果</span> <i class="fas fa-robot text-brand-300"></i></h4>
+        <div class="flex flex-col gap-2 mb-8"><span class="text-[10px] font-bold text-brand-400 uppercase">首选方案</span><div class="text-2xl font-black text-brand-900" id="report-drug">奥希替尼</div><p class="text-[11px] font-bold text-blue-600 uppercase tracking-widest mt-1" id="report-trial">基于 FLAURA 研究证据</p></div>
+        <div class="bg-white p-6 rounded-2xl border border-brand-50 shadow-sm mb-8"><p class="text-[11px] text-brand-400 font-bold mb-2 uppercase">药理机制及临床预期：</p><p class="text-[13px] text-brand-900 leading-relaxed font-medium text-justify" id="report-mechanism">作为第三代不可逆EGFR-TKI，强效抑制T790M及敏感突变...</p></div>
+        <div class="bg-white p-6 rounded-2xl border border-brand-50 shadow-sm mb-10"><p class="text-[11px] text-brand-400 font-bold mb-2 uppercase">针对临床追问的回复：</p><p class="text-[13px] text-brand-900 leading-relaxed font-bold italic" id="report-query-text">未输入具体追问。</p></div>
+        <button id="save-btn" onclick="archiveCurrentPlan()" class="w-full py-5 bg-brand-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg">将此报告加密存档</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 扩充后的：监管与循证体系弹窗 -->
+<div id="policy-modal" class="fixed inset-0 z-[3000] bg-brand-900/60 backdrop-blur-md hidden items-center justify-center p-6 transition-all duration-500 opacity-0">
+  <div class="w-full max-w-4xl bg-white rounded-[4rem] shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-500" id="policy-content">
+    <div class="p-8 lg:p-12 border-b-2 border-brand-50 flex justify-between items-center bg-brand-50/20 shrink-0">
+        <h3 class="text-2xl lg:text-3xl font-black text-brand-900 tracking-tighter uppercase"><i class="fas fa-landmark-dome text-blue-600 mr-4"></i> 临床循证与评价体系</h3>
+        <button onclick="closePolicy()" class="w-12 h-12 lg:w-14 lg:h-14 bg-white border border-brand-100 rounded-2xl flex items-center justify-center text-brand-900 hover:rotate-90 transition-transform"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="p-8 lg:p-12 overflow-y-auto max-h-[70vh] space-y-10 custom-scrollbar">
+        <div class="space-y-4">
+            <h4 class="text-lg font-black text-brand-900 border-l-4 border-blue-600 pl-4 uppercase">1. 国际与国内权威指南实时同步</h4>
+            <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">系统核心知识库 (Knowledge Base) 通过专属 API 接口，实现与全球顶级肿瘤临床实践指南的分钟级同步。涵盖但不限于 <strong>NCCN (美国国家综合癌症网络)</strong>、<strong>ESMO (欧洲肿瘤内科学会)</strong>、<strong>ASCO (美国临床肿瘤学会)</strong> 以及 <strong>CSCO (中国临床肿瘤学会)</strong> 等实体瘤与血液瘤最新版指南。每一次靶向药物推荐级别的跃升或适应症的扩展，均会被自动解析并映射至底层决策树中。</p>
+        </div>
+        <div class="space-y-4">
+            <h4 class="text-lg font-black text-brand-900 border-l-4 border-cyan-500 pl-4 uppercase">2. 证据等级 (LOE) 动态分级标准</h4>
+            <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">我们在传统证据分级基础上，引入了基于真实世界证据 (RWE) 的加权算法：<br><br>
+            • <span class="text-brand-900 font-bold">Level 1 (最高优选)：</span>FDA/NMPA 获批该适应症，且具有前瞻性 III 期 RCT 的压倒性数据支持。<br>
+            • <span class="text-brand-900 font-bold">Level 2 (标准推荐)：</span>具有公认的 II 期临床数据或权威指南的共识性推荐（如 NCCN 2A 类）。<br>
+            • <span class="text-brand-900 font-bold">Level 3 (探索与招募)：</span>基于大规模真实世界队列发现的潜在获益（如泛癌种罕见靶点），优先推荐受试者进入临床试验 (CRO) 入组匹配。
+            </p>
+        </div>
+        <div class="space-y-4">
+            <h4 class="text-lg font-black text-brand-900 border-l-4 border-patient-600 pl-4 uppercase">3. 动态耐药与不良反应监控</h4>
+            <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">不同于静态的指南文本，智疗云通过整合全国 1200+ 三甲医院的电子病历 (EMR) 摘要与用药反馈，针对特定突变（如 EGFR T790M/C797S）构建了继发性耐药演化沙盘。当患者出现耐药进展时，系统不仅提供后线标准治疗，更基于共突变图谱推演联合用药（如靶向联合抗血管生成或化疗）的最佳时机。</p>
+        </div>
+        <div class="space-y-4 bg-red-50 p-6 rounded-2xl border border-red-100">
+            <h4 class="text-lg font-black text-red-600 pl-2 uppercase"><i class="fas fa-exclamation-triangle mr-2"></i> 医疗免责声明</h4>
+            <p class="text-red-500 font-medium leading-relaxed text-sm text-justify">本系统提供的大模型解析、靶向策略推荐及临床试验匹配服务，<strong>仅供具有执业资格的专业医疗人员作为辅助决策 (CDSS) 参考工具</strong>。AI 演算结果绝对不能替代医生面对面的问诊、物理查体以及结合患者全面生理状况的最终临床裁决。任何基于本系统数据的医疗干预行为，其责任由处方医师完全承担。</p>
+        </div>
+    </div>
+  </div>
+</div>
+
+<!-- 扩充后的：智疗云技术白皮书弹窗 -->
+<div id="whitepaper-modal" class="fixed inset-0 z-[3000] bg-brand-900/60 backdrop-blur-md hidden items-center justify-center p-6 transition-all duration-500 opacity-0">
+  <div class="w-full max-w-4xl bg-white rounded-[4rem] shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-500" id="whitepaper-content">
+    <div class="p-8 lg:p-12 border-b-2 border-brand-50 flex justify-between items-center bg-blue-50/30 shrink-0">
+      <h3 class="text-2xl lg:text-3xl font-black text-brand-900 tracking-tighter uppercase"><i class="fas fa-server text-blue-600 mr-4"></i> 智疗云技术白皮书</h3>
+      <button onclick="closeWhitepaper()" class="w-12 h-12 lg:w-14 lg:h-14 bg-white border border-brand-100 rounded-2xl flex items-center justify-center text-brand-900 hover:rotate-90 transition-transform"><i class="fas fa-times text-xl"></i></button>
+    </div>
+    <div class="p-8 lg:p-12 overflow-y-auto max-h-[70vh] space-y-10 custom-scrollbar">
+      <div class="space-y-4">
+          <h4 class="text-lg font-black text-brand-900 border-l-4 border-blue-600 pl-4 uppercase">1. 超大规模异构数据存储与算力基座</h4>
+          <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">智疗云依托弹性扩展的 Kubernetes 容器集群与分布式 GPU 算力池（NVIDIA H100 阵列），支持对 <strong>PB 级多模态组学数据（WES, WGS, RNA-Seq）</strong>进行并发高通量处理。数据持久化层采用混合架构：结构化电子病历落入分布式关系型数据库（TiDB），高频查询的基因位点与突变频率缓存于 Redis 集群，而极度复杂的生物标志物交互关系则深度依赖于底层 <strong>Neo4j 图数据库</strong>，实现了百万级节点网络下毫秒级的变异溯源与耐药路径检索。</p>
+      </div>
+      <div class="space-y-4">
+          <h4 class="text-lg font-black text-brand-900 border-l-4 border-indigo-500 pl-4 uppercase">2. 独家医疗大模型与自然语言处理 (NLP)</h4>
+          <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">基于千亿参数基座模型，我们在高质量中英双语医学文献（PubMed、ASCO 摘要、临床试验记录）以及百万份脱敏后的真实世界病理报告上进行了全参数微调 (Fine-tuning)。该模型具备极强的医疗实体识别能力 (NER)，能够从非结构化的医生手写病历、PDF 基因检测报告中，精准抽取 TMB、PD-L1 表达率、融合基因断点等长尾特征，将脏数据转化为高信噪比的临床结构化特征向量。</p>
+      </div>
+      <div class="space-y-4">
+          <h4 class="text-lg font-black text-brand-900 border-l-4 border-cyan-500 pl-4 uppercase">3. CDSS 知识图谱推理引擎 V3.5</h4>
+          <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">系统的核心灵魂是动态演进的肿瘤学知识图谱 (Oncology Knowledge Graph)。它将“疾病分类-变异基因-靶向药物-耐药机制-临床试验”编织成一张具备自学能力的巨网。当医生输入复杂的伴随突变（如 <code>KRAS G12C + STK11 + KEAP1</code>）时，图谱推理引擎不再是简单的关键字匹配，而是沿着生物学通路与真实世界队列的生存期曲线 (Kaplan-Meier estimates) 进行贝叶斯推断，自动过滤潜在拮抗方案，输出获益概率最高的最优解。</p>
+      </div>
+      <div class="space-y-4">
+          <h4 class="text-lg font-black text-brand-900 border-l-4 border-green-500 pl-4 uppercase">4. 端到端的数据合规与隐私保护框架</h4>
+          <p class="text-brand-400 font-medium leading-relaxed text-sm text-justify">在联邦学习 (Federated Learning) 架构下，我们实现了“数据可用不可见”。各医疗机构的原始 RWD 数据驻留本地，仅将脱敏后的模型梯度或特征统计量回传至云端中枢。所有数据传输均采用 <strong>TLS 1.3 + AES-256 全链路加密</strong>。系统严格遵循美国 HIPAA 标准及中国《个人信息保护法》要求，并内置基于区块链的防篡改审计日志 (Audit Trail)，确保每一次决策调用均可追溯无虞。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="notify-modal" class="fixed inset-0 z-[4000] bg-brand-900/60 backdrop-blur-md hidden items-center justify-center p-6 transition-all duration-500 opacity-0">
+  <div class="w-full max-w-md bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-500" id="notify-content">
+    <div class="p-8 border-b-2 border-brand-50 flex justify-between items-center bg-blue-50/30"><h3 class="text-xl font-black text-brand-900 tracking-tighter uppercase"><i class="fas fa-bell text-blue-600 mr-3"></i> 临床动态中心</h3><button onclick="closeNotify()" class="text-brand-400 hover:text-brand-900"><i class="fas fa-times text-lg"></i></button></div>
+    <div class="p-8 overflow-y-auto max-h-[60vh] space-y-4 no-scrollbar">
+       <!-- 原版4条消息完整保留 -->
+       <div class="p-4 bg-brand-50 rounded-2xl border-l-4 border-blue-600">
+           <p class="text-xs font-black text-brand-900 mb-1 flex justify-between">NCCN 指南重磅更新 <span class="text-[9px] text-brand-400 font-normal">今天</span></p>
+           <p class="text-[10px] text-brand-800 font-medium leading-relaxed">NCCN NSCLC Guidelines 2024 V3 已同步。Amivantamab 联合化疗被正式纳入 EGFR Exon 20 插入突变一线治疗首选。</p>
+       </div>
+       <div class="p-4 bg-orange-50/50 rounded-2xl border-l-4 border-orange-400">
+           <p class="text-xs font-black text-brand-900 mb-1 flex justify-between">FDA 新药加速获批 <span class="text-[9px] text-brand-400 font-normal">昨天</span></p>
+           <p class="text-[10px] text-brand-800 font-medium leading-relaxed">FDA 加速批准 Repotrectinib (瑞波替尼) 用于治疗 ROS1 阳性的局部晚期或转移性实体瘤患者。</p>
+       </div>
+       <div class="p-4 bg-green-50/50 rounded-2xl border-l-4 border-green-500">
+           <p class="text-xs font-black text-brand-900 mb-1 flex justify-between">数据库自动清洗完成 <span class="text-[9px] text-brand-400 font-normal">2 天前</span></p>
+           <p class="text-[10px] text-brand-800 font-medium leading-relaxed">系统已自动完成 ESMO 2024 年会最新 1,240 篇壁报数据的知识图谱抽取与入库校对。</p>
+       </div>
+       <div class="p-4 bg-brand-50 rounded-2xl border-l-4 border-brand-400">
+           <p class="text-xs font-black text-brand-900 mb-1 flex justify-between">安全登录提醒 <span class="text-[9px] text-brand-400 font-normal">系统</span></p>
+           <p class="text-[10px] text-brand-800 font-medium leading-relaxed">您的账号在异地（IP: 192.168.1.15）成功进行了 MFA 多因素安全验证。</p>
+       </div>
+    </div>
+  </div>
+</div>
+
+<div id="profile-modal" class="fixed inset-0 z-[4000] bg-brand-900/60 backdrop-blur-md hidden items-center justify-center p-6 transition-all duration-500 opacity-0">
+  <div class="w-full max-w-sm bg-white rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-all duration-500" id="profile-content">
+    <div class="relative h-32 bg-brand-900"><button onclick="closeProfile()" class="absolute top-6 right-6 text-white/50 hover:text-white"><i class="fas fa-times"></i></button></div>
+    <div class="px-8 pb-10 flex flex-col items-center -mt-16">
+        <div class="w-32 h-32 rounded-[2.5rem] bg-white border-8 border-white shadow-xl flex items-center justify-center text-5xl text-brand-900 mb-6 relative">
+            <i class="fas fa-user-md"></i>
+            <div class="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full border-2 border-white flex items-center justify-center"><i class="fas fa-shield-check text-white text-xs"></i></div>
+        </div>
+        <h3 class="text-2xl font-black text-brand-900 mb-1">王建国 博士</h3>
+        <p class="text-brand-400 font-bold text-[10px] tracking-widest uppercase mb-2">胸部肿瘤内科 / 主任医师</p>
+        <span class="px-3 py-1 bg-blue-50 text-blue-600 text-[9px] font-black rounded-full mb-8">MDT 专家组组长</span>
+
+        <div class="w-full grid grid-cols-2 gap-3 mb-6">
+            <div class="bg-brand-50 p-4 rounded-2xl text-center">
+                <p class="text-[10px] text-brand-400 font-bold uppercase mb-1">本月研判</p>
+                <p class="text-xl font-black text-brand-900">124<span class="text-[10px] ml-1">例</span></p>
+            </div>
+            <div class="bg-brand-50 p-4 rounded-2xl text-center">
+                <p class="text-[10px] text-brand-400 font-bold uppercase mb-1">图谱贡献</p>
+                <p class="text-xl font-black text-brand-900">12<span class="text-[10px] ml-1">条</span></p>
+            </div>
+        </div>
+
+        <div class="w-full space-y-3 mb-6">
+            <div class="flex justify-between items-center text-[10px] font-bold pb-2 border-b border-brand-50"><span class="text-brand-400 uppercase">执业证书编号</span><span class="text-brand-900 font-mono">1101108273645</span></div>
+            <div class="flex justify-between items-center text-[10px] font-bold pb-2 border-b border-brand-50"><span class="text-brand-400 uppercase">系统认证状态</span><span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>已实名验证</span></div>
+        </div>
+
+        <div class="w-full grid grid-cols-2 gap-3">
+            <button class="py-4 bg-brand-50 text-brand-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand-100 transition-all"><i class="fas fa-cog mr-2"></i>设置</button>
+            <button onclick="location.reload()" class="py-4 bg-white border-2 border-brand-100 text-red-500 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 hover:border-red-100 transition-all">安全退出</button>
+        </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ================= 原版 JS 逻辑完全保留 ================= */
+  let savedPlans = [];
+
+  function enterApp() {
+    const landing = document.getElementById('landing-page');
+    landing.style.pointerEvents = 'none'; landing.style.opacity = '0';
+    setTimeout(() => { landing.style.display = 'none'; }, 1000);
+  }
+
+  function switchTab(pageId) {
+    document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId + '-page').classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(item => {
+      if(item.dataset.target === pageId) {
+        item.classList.remove('text-brand-400'); item.classList.add('text-brand-900');
+      } else {
+        item.classList.remove('text-brand-900'); item.classList.add('text-brand-400');
+      }
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function startAnalysis() {
+    const mutInput = document.getElementById('mutation-input').value.trim() || 'EGFR T790M';
+    const cancerType = document.getElementById('cancer-type').options[document.getElementById('cancer-type').selectedIndex].text;
+    const query = document.getElementById('ai-query').value.trim();
+    const loader = document.getElementById('loading-modal');
+    
+    let drugName = "奥希替尼 (Osimertinib)", trial = "基于 FLAURA & AURA3 证据", mechanism = "作为第三代不可逆EGFR-TKI，强效抑制T790M及敏感突变，且具备优异的中枢神经系统穿透力。研究表明，在中位 PFS 方面展现出压倒性优势。", conf = "97.4%", loe = "Level 1A";
+    const m = mutInput.toUpperCase();
+    
+    // 原版条件判断完整保留
+    if (m.includes("KRAS") && (m.includes("G12C") || m === "KRAS")) { drugName = "索托拉塞 (Sotorasib)"; trial = "基于 CodeBreaK 100 数据"; mechanism = "特异性且不可逆地结合处于GDP结合状态的 KRAS G12C 突变蛋白。对于后线化疗进展患者能提供明确的客观缓解。"; conf = "92.1%"; loe = "Level 2A"; }
+    else if (m.includes("ALK")) { drugName = "阿来替尼 (Alectinib)"; trial = "基于 ALEX 临床研究"; mechanism = "新一代高选择性ALK抑制剂，由于不依赖 P-糖蛋白转运系统，拥有极强的入脑能力，强效控制脑转移灶。"; conf = "98.5%"; loe = "Level 1A"; }
+    else if (!m.includes("EGFR")) { drugName = "免疫检查点抑制剂 (PD-1)"; trial = "泛癌种推荐规范"; mechanism = "未检测到明确的经典驱动基因突变。建议结合 PD-L1 表达 (TPS) 及肿瘤突变负荷 (TMB) 综合决定免疫单药或联合方案。"; conf = "80.5%"; loe = "综合评估"; }
+
+    loader.style.display = 'flex'; setTimeout(() => loader.style.opacity = '1', 10);
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.style.display = 'none';
+        
+        // 生成数据
+        document.getElementById('report-mutation').innerText = `[${cancerType}] - ${mutInput.toUpperCase()}`;
+        document.getElementById('report-time').innerText = "RWD-" + Date.now().toString(36).toUpperCase();
+        document.getElementById('report-drug').innerText = drugName; 
+        document.getElementById('report-trial').innerText = trial;
+        document.getElementById('report-mechanism').innerText = mechanism; 
+        document.getElementById('report-confidence').innerText = conf; 
+        document.getElementById('report-loe').innerText = loe;
+        document.getElementById('report-query-text').innerText = query ? "系统分析：已记录您的额外追问。经大规模队列特征匹配，当前计算模型推荐的靶向策略依然是同等基线条件下获益风险比最优的选择。" : "常规研判申请，未提供额外伴随表型追问，系统按标准指南路径输出。";
+        
+        document.getElementById('save-btn').style.display = 'block';
+        document.getElementById('report-title-head').innerText = 'AI CDSS 研判报告';
+
+        document.getElementById('report-modal').style.display = 'flex';
+        setTimeout(() => { document.getElementById('report-modal').style.opacity = '1'; document.getElementById('report-content').style.transform = 'translateY(0)'; }, 10);
+      }, 500);
+    }, 2200);
+  }
+
+  function archiveCurrentPlan() {
+    savedPlans.unshift({ 
+        title: document.getElementById('report-mutation').innerText, 
+        time: document.getElementById('report-time').innerText, 
+        desc: `AI 推荐方案: ${document.getElementById('report-drug').innerText}`, 
+        date: new Date().toLocaleDateString(), 
+        type: 'AI Generated',
+        drug: document.getElementById('report-drug').innerText,
+        trial: document.getElementById('report-trial').innerText,
+        mechanism: document.getElementById('report-mechanism').innerText,
+        conf: document.getElementById('report-confidence').innerText,
+        loe: document.getElementById('report-loe').innerText,
+        queryText: document.getElementById('report-query-text').innerText
+    });
+    
+    updateSavedPlansUI(); 
+    closeReport(); 
+    switchTab('mine'); 
+    setTimeout(() => alert("报告已采用 AES-256 加密保存！"), 300);
+  }
+
+  function handleFileImport(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const loader = document.getElementById('loading-modal'); loader.style.display = 'flex'; document.getElementById('loading-text').innerText = "正在解析报告...";
+    setTimeout(() => loader.style.opacity = '1', 10);
+    setTimeout(() => {
+        loader.style.opacity = '0'; setTimeout(() => {
+            loader.style.display = 'none'; document.getElementById('loading-text').innerText = "正在遍历全球千万级真实世界证据...";
+            savedPlans.unshift({ 
+                title: "FILE: " + file.name, 
+                time: "OCR-" + Math.random().toString(36).substr(2, 6).toUpperCase(), 
+                desc: "系统解析：检出变异丰度(VAF) - EGFR L858R (12.4%), TP53 (3.2%)", 
+                date: new Date().toLocaleDateString(), 
+                type: 'Imported NGS' 
+            });
+            updateSavedPlansUI(); alert("基因测序报告解析完成，已存入档案库！");
+        }, 500);
+    }, 2500);
+  }
+
+  function updateSavedPlansUI() {
+    const container = document.getElementById('saved-plans-container');
+    document.getElementById('plan-count').innerText = `已存档 ${savedPlans.length} 份`;
+    if (savedPlans.length === 0) return;
+    
+    let htmlContent = '';
+    savedPlans.forEach((plan, index) => {
+        htmlContent += `
+          <div class="p-6 bg-white border-2 border-brand-50 rounded-3xl hover:border-blue-600 transition-all cursor-pointer group shadow-sm" onclick="viewArchivedPlan(${index})">
+             <div class="flex justify-between mb-3"><span class="text-[9px] font-black ${plan.type === 'Imported NGS' ? 'text-green-600 bg-green-50' : 'text-blue-600 bg-blue-50'} px-3 py-1 rounded-full uppercase">${plan.type} - ${plan.date}</span><i class="fas fa-chevron-right text-brand-100 group-hover:translate-x-1 transition-transform"></i></div>
+             <div class="text-[15px] font-black text-brand-900 mb-1 line-clamp-1">${plan.title}</div>
+             <div class="text-[9px] font-bold text-brand-400 opacity-60 mb-3 uppercase font-mono">${plan.time}</div>
+             <div class="text-[11px] text-brand-800 line-clamp-2 italic border-t border-brand-50 pt-3">${plan.desc}</div>
+          </div>
+        `;
+    });
+    container.innerHTML = htmlContent;
+  }
+
+  function viewArchivedPlan(index) {
+      const plan = savedPlans[index];
+      if (plan.type === 'Imported NGS') {
+          alert("该文件为原始第三方检测文档，当前网页版本暂不支持直接预览本地 PDF/VCF 格式。请使用桌面客户端打开。");
+          return;
+      }
+      document.getElementById('report-title-head').innerText = '已存档的研判记录';
+      document.getElementById('report-mutation').innerText = plan.title;
+      document.getElementById('report-time').innerText = plan.time;
+      document.getElementById('report-drug').innerText = plan.drug;
+      document.getElementById('report-trial').innerText = plan.trial;
+      document.getElementById('report-mechanism').innerText = plan.mechanism;
+      document.getElementById('report-confidence').innerText = plan.conf;
+      document.getElementById('report-loe').innerText = plan.loe;
+      document.getElementById('report-query-text').innerText = plan.queryText;
+
+      document.getElementById('save-btn').style.display = 'none';
+
+      document.getElementById('report-modal').style.display = 'flex';
+      setTimeout(() => { document.getElementById('report-modal').style.opacity = '1'; document.getElementById('report-content').style.transform = 'translateY(0)'; }, 10);
+  }
+
+  /* 各种弹窗控制逻辑 */
+  function closeReport() { document.getElementById('report-content').style.transform = 'translateY(100px)'; document.getElementById('report-modal').style.opacity = '0'; setTimeout(() => document.getElementById('report-modal').style.display = 'none', 500); }
+  function openPolicy() { document.getElementById('policy-modal').style.display = 'flex'; setTimeout(() => { document.getElementById('policy-modal').style.opacity = '1'; document.getElementById('policy-content').style.transform = 'scale(1)'; }, 10); }
+  function closePolicy() { document.getElementById('policy-content').style.transform = 'scale(0.95)'; document.getElementById('policy-modal').style.opacity = '0'; setTimeout(() => document.getElementById('policy-modal').style.display = 'none', 500); }
+  function openWhitepaper() { document.getElementById('whitepaper-modal').style.display = 'flex'; setTimeout(() => { document.getElementById('whitepaper-modal').style.opacity = '1'; document.getElementById('whitepaper-content').style.transform = 'scale(1)'; }, 10); }
+  function closeWhitepaper() { document.getElementById('whitepaper-content').style.transform = 'scale(0.95)'; document.getElementById('whitepaper-modal').style.opacity = '0'; setTimeout(() => document.getElementById('whitepaper-modal').style.display = 'none', 500); }
+  function openNotify() { document.getElementById('notify-modal').style.display = 'flex'; setTimeout(() => { document.getElementById('notify-modal').style.opacity = '1'; document.getElementById('notify-content').style.transform = 'scale(1)'; }, 10); }
+  function closeNotify() { document.getElementById('notify-content').style.transform = 'scale(0.95)'; document.getElementById('notify-modal').style.opacity = '0'; setTimeout(() => document.getElementById('notify-modal').style.display = 'none', 500); }
+  function openProfile() { document.getElementById('profile-modal').style.display = 'flex'; setTimeout(() => { document.getElementById('profile-modal').style.opacity = '1'; document.getElementById('profile-content').style.transform = 'scale(1)'; }, 10); }
+  function closeProfile() { document.getElementById('profile-content').style.transform = 'scale(0.95)'; document.getElementById('profile-modal').style.opacity = '0'; setTimeout(() => document.getElementById('profile-modal').style.display = 'none', 500); }
+
+
+  /* ================= 新增：多端调度与交互 JS ================= */
+
+  function showRoleModal() {
+      const modal = document.getElementById('role-modal');
+      modal.style.display = 'flex';
+      setTimeout(() => { modal.style.opacity = '1'; }, 10);
+  }
+  
+  function hideRoleModal() {
+      const modal = document.getElementById('role-modal');
+      modal.style.opacity = '0';
+      setTimeout(() => { modal.style.display = 'none'; }, 700);
+  }
+
+  function enterTerminal(role) {
+      hideRoleModal();
+      const landing = document.getElementById('landing-page');
+      landing.style.pointerEvents = 'none'; landing.style.opacity = '0';
+      setTimeout(() => { landing.style.display = 'none'; }, 1000);
+
+      document.querySelectorAll('.terminal-container').forEach(t => {
+          t.classList.remove('active');
+          t.style.display = 'none';
+      });
+
+      setTimeout(() => {
+          const activeTerminal = document.getElementById('terminal-' + role);
+          activeTerminal.style.display = 'block';
+          setTimeout(() => { activeTerminal.classList.add('active'); }, 50);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 500);
+  }
+
+  function quickAsk(text) {
+      const input = document.getElementById('patient-chat-input');
+      input.value = text;
+      sendPatientMsg();
+  }
+
+  function sendPatientMsg() {
+      const input = document.getElementById('patient-chat-input');
+      const text = input.value.trim();
+      if(!text) return;
+      
+      appendPatientChat('user', text);
+      input.value = '';
+      
+      setTimeout(() => {
+          appendPatientChat('ai', '智疗大模型正在结合最新临床指南为您分析... <i class="fas fa-spinner fa-spin text-brand-200 ml-2"></i>');
+          
+          setTimeout(() => {
+              const chatBox = document.getElementById('patient-chat-box');
+              chatBox.removeChild(chatBox.lastChild);
+              
+              let reply = '这是一个非常专业的问题。建议您详细记录症状变化，并尽快与您的主治医师（肿瘤内科）沟通。如果手头有最新的化验单或报告，可以直接上传给我。';
+              
+              if(text.includes('甲沟炎') || text.includes('发炎')) {
+                  reply = '靶向药（如奥希替尼）引起的甲沟炎是常见的皮肤毒性反应。**建议处理方式：**<br>1. 保持手足清洁干燥，穿宽松鞋袜。<br>2. 每天用温水浸泡患处 10-15 分钟。<br>3. 局部可涂抹百多邦（莫匹罗星软膏）或红霉素软膏防感染。<br><span class="text-red-500 font-bold">注：若出现化脓或剧烈疼痛，请立刻前往皮肤科或肿瘤科就诊。</span>';
+              } else if (text.includes('漏服')) {
+                  reply = '关于漏服靶向药：<br>一般原则是：如果距离下一次服药时间**大于 12 小时**，可以补服一次；如果距离下次服药时间**不足 12 小时**，则不需要补服，直接按原计划时间服用下一次即可。<br>千万不要在下一次服用双倍剂量！';
+              } else if (text.includes('复查') || text.includes('空腹')) {
+                  reply = '常规的肿瘤复查通常包含：血常规、生化全项、肿瘤标志物以及增强CT。<br>因为有抽血和增强CT，**一般建议空腹（禁食禁水6-8小时）**。但常规的高血压药可以用一小口清水送服，不影响检查。具体请以您所在医院的检查预约单为准。';
+              } else if (text.includes('心理') || text.includes('失眠')) {
+                  reply = '面对疾病产生焦虑和失眠是非常正常的反应。**建议您可以尝试：**<br>1. **倾诉与交流：** 与家人或病友群分享感受，不要独自承受。<br>2. **渐进式放松：** 睡前尝试深呼吸或聆听轻柔的白噪音（如海浪声）。<br>3. **专业介入：** 如果失眠持续超过两周影响白天的精神状态，请务必在复查时告知医生，适当地开具辅助睡眠或抗焦虑药物对身体恢复更有利。';
+              } else if (text.includes('医保')) {
+                  reply = '近几年国家医保谈判将大量抗癌靶向药和免疫药纳入了医保目录（如奥希替尼、阿美替尼、各类PD-1等）。<br>**常规报销流程：**<br>1. 确保在主治医生处开具**“双通道”购药处方**及相关诊断证明。<br>2. 携带基因检测阳性报告（这是靶向药报销的硬性条件）在医院医保办进行**特病/门慢备案**。<br>3. 备案成功后，直接在医院药房或指定医保特药药房刷卡结算即可享受报销比例（通常在60%-80%不等，各地政策略有差异）。';
+              }
+
+              appendPatientChat('ai', reply);
+          }, 1500);
+      }, 500);
+  }
+
+  function appendPatientChat(role, text) {
+      const container = document.getElementById('patient-chat-box');
+      const div = document.createElement('div');
+      div.className = `flex w-full mb-4 ${role === 'user' ? 'justify-end' : 'justify-start'} chat-bubble`;
+      
+      if (role === 'user') {
+          div.innerHTML = `<div class="bg-patient-600 text-white px-5 py-4 rounded-2xl rounded-tr-none text-sm max-w-[85%] shadow-md leading-relaxed">${text}</div>`;
+      } else {
+          div.innerHTML = `<div class="bg-white border border-brand-50 px-5 py-4 rounded-2xl rounded-tl-none text-sm max-w-[85%] shadow-sm text-brand-900 leading-relaxed font-medium flex gap-4">
+              <i class="fas fa-robot text-patient-600 mt-1 text-lg shrink-0"></i><div>${text}</div>
+          </div>`;
+      }
+      
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+  }
+
+  function patientUploadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const archiveList = document.getElementById('patient-archive-list');
+      const fileId = Math.random().toString(36).substr(2, 5).toUpperCase();
+      const dateStr = new Date().toLocaleDateString();
+      
+      const fileHtml = `
+          <div class="p-4 bg-white border border-brand-50 rounded-xl flex items-center justify-between shadow-sm cursor-pointer hover:border-patient-600 transition-colors">
+              <div class="flex items-center gap-4 overflow-hidden">
+                  <div class="w-10 h-10 bg-patient-50 text-patient-600 rounded-lg flex items-center justify-center shrink-0"><i class="fas fa-file-pdf"></i></div>
+                  <div class="overflow-hidden"><p class="text-xs font-black text-brand-900 truncate">${file.name}</p><p class="text-[9px] text-brand-400 font-mono">FILE-${fileId} · ${dateStr}</p></div>
+              </div>
+              <i class="fas fa-cloud-check text-green-500 shrink-0 ml-2"></i>
+          </div>`;
+      
+      if(archiveList.innerHTML.includes("暂无档案记录")) archiveList.innerHTML = '';
+      archiveList.insertAdjacentHTML('afterbegin', fileHtml);
+
+      appendPatientChat('user', `我上传了最新的检查文件：[ ${file.name} ]，请帮我看看上面的结论是什么意思。`);
+      
+      setTimeout(() => {
+          appendPatientChat('ai', `收到您的报告！我正在使用深度神经解析网络（OCR + NLP）帮您提取核心指标...`);
+          setTimeout(() => {
+              const chatBox = document.getElementById('patient-chat-box');
+              chatBox.removeChild(chatBox.lastChild);
+              
+              appendPatientChat('ai', `**报告解读已完成：**<br><br>您的基因检测报告显示存在 <span class="text-red-500 font-bold">EGFR Exon 19 缺失突变 (19del)</span>。<br><br>这是一个**非常经典的敏感突变**，意味着您有很大概率可以使用口服的 EGFR 靶向药（如奥希替尼等），且副作用通常小于传统化疗。该数据已通过加密通道同步至您的云端档案，您的主治医生在开具处方时，系统会自动为他提示该关键信息。`);
+          }, 2500);
+      }, 800);
+  }
+</script>
+</body>
+</html>
